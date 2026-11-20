@@ -1,7 +1,8 @@
 /* Bowling Pro Tracker — service worker
    - Gdy jest internet: zawsze pobiera najnowszą wersję aplikacji (aktualizacje docierają same).
    - Gdy internet jest słaby (> 3 s) albo go nie ma: uruchamia zapisaną kopię — apka działa offline.
-   Twoje gry NIE są tu przechowywane — są w pamięci przeglądarki (localStorage) na telefonie. */
+   Biblioteka logowania (www.gstatic.com/firebasejs) też trafia do pamięci — logowanie i synchronizacja ruszą bez internetu.
+   Twoje gry NIE są tu przechowywane — są w pamięci przeglądarki (localStorage) i na koncie (Firebase). */
 const CACHE = 'bowling-app-v1';
 const APP_FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
@@ -56,7 +57,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin === self.location.origin) {
     e.respondWith(networkFirst(req, 3000));
-  } else if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com' || url.hostname === 'cdnjs.cloudflare.com') {
+  } else if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com' || url.hostname === 'cdnjs.cloudflare.com' || url.hostname === 'www.gstatic.com') {
     e.respondWith(cacheFirst(req));
   }
 });

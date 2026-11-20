@@ -1,0 +1,2541 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Bowling Pro Tracker</title>
+<meta name="description" content="Licznik wyników i statystyki do bowlingu — liga i trening">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   WYGLĄD — czysty CSS (bez Tailwinda), działa w 100% offline.
+   Czerń AMOLED pod Samsung S24 Ultra.
+   ===================================================================== */
+:root{
+  --bg:#000; --s1:#111113; --s2:#19191c; --s3:#242428; --s4:#313136;
+  --line:#222226; --line2:#35353a;
+  --tx:#fafafa; --tx2:#d4d4d8; --mut:#8e8e98; --dim:#5f5f69;
+  --acc:#3b82f6; --acc2:#60a5fa; --accbg:rgba(59,130,246,.14);
+  --ok:#10b981; --warn:#f59e0b; --bad:#ef4444;
+  --r:16px; --nav-h:62px;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+body{user-select:none;-webkit-user-select:none;overflow-x:hidden;min-height:100vh;min-height:100dvh}
+input,select,textarea{user-select:text;-webkit-user-select:text;font:inherit}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+svg{flex:none}
+.app{max-width:520px;margin:0 auto;padding:calc(10px + var(--safe-t)) 12px calc(var(--nav-h) + var(--safe-b) + 18px)}
+.tab{display:none;flex-direction:column;gap:10px}
+.tab.on{display:flex;animation:fade .18s ease}
+.sub{display:flex;flex-direction:column;gap:10px}
+.item.closed{opacity:.8}
+.oil-hint{background:linear-gradient(180deg,rgba(59,130,246,.11),rgba(59,130,246,.03));border:1px solid rgba(59,130,246,.35);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:7px;font-size:12.5px}
+.oil-hint.new{background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.35);color:#fcd34d;display:block;line-height:1.55}
+.combo{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:var(--s2);border:1px solid var(--line2);border-radius:11px;padding:8px 10px;font-size:12.5px;line-height:1.35;transition:transform .1s}
+.combo:active{transform:scale(.98)}
+.combo small{color:var(--mut);font-size:11px}
+.combo .use{font-size:11px;font-weight:800;color:var(--acc2);background:var(--accbg);padding:5px 8px;border-radius:8px;flex:none}
+.combo.best{border-color:rgba(16,185,129,.55);background:rgba(16,185,129,.06)}
+.link-chip{display:inline-block;font-size:11.5px;font-weight:700;color:var(--acc2);background:var(--accbg);border-radius:8px;padding:3px 8px;margin:3px 3px 0 0}
+.tbl tr[data-action]{cursor:pointer}
+.tbl tr[data-action] td:first-child{color:var(--acc2)}
+.badge-done{background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* --- typografia / pomocnicze --- */
+.muted{color:var(--mut)} .dim{color:var(--dim)} .tx2{color:var(--tx2)} .acc{color:var(--acc2)} .okc{color:var(--ok)} .warnc{color:var(--warn)} .badc{color:#f87171}
+.small{font-size:13px} .xs{font-size:11.5px} .strong{font-weight:700} .center{text-align:center}
+.row{display:flex;align-items:center;gap:8px}
+.between{justify-content:space-between}
+.wrap{flex-wrap:wrap}
+.grow{flex:1;min-width:0} .grow2{flex:2;min-width:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.span2{grid-column:1/-1}
+.stack{display:flex;flex-direction:column;gap:8px}
+.mt4{margin-top:4px} .mt8{margin-top:8px} .mt12{margin-top:12px}
+
+/* --- karty --- */
+.card{background:var(--s1);border:1px solid var(--line);border-radius:var(--r);padding:13px}
+.card h2{margin:0 0 3px;font-size:16px;font-weight:800;letter-spacing:-.01em}
+.card p{margin:0}
+.sec-title{display:flex;align-items:center;gap:7px;margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.dot-acc{width:8px;height:8px;border-radius:50%;background:var(--acc);display:inline-block}
+.list-head{display:flex;justify-content:space-between;align-items:center;padding:4px 2px 0}
+.list-head h3{margin:0;font-size:14px;font-weight:800;color:var(--tx2)}
+
+/* --- formularze --- */
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.label{font-size:11px;color:var(--mut);font-weight:600}
+.input{width:100%;background:var(--s3);color:var(--tx);border:1px solid var(--line2);border-radius:11px;padding:10px 11px;font-size:14px;font-weight:600;outline:none;min-width:0;transition:border-color .15s, box-shadow .15s}
+.input::placeholder{color:var(--dim);font-weight:500}
+.input:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--accbg)}
+.input-sm{padding:7px 10px;font-size:13px;border-radius:10px}
+select.input{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238e8e98' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
+input[type=number].input{-moz-appearance:textfield;appearance:textfield}
+input[type=number].input::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=color].input{padding:3px;height:42px;cursor:pointer}
+.lane{width:78px;flex:none;text-align:center}
+.board-in{text-align:center;font-weight:800}
+
+/* --- przyciski --- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--s2);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;font-size:13px;font-weight:700;color:var(--tx);transition:transform .1s, background .15s, opacity .15s, border-color .15s;white-space:nowrap}
+.btn:active{transform:scale(.95)}
+.btn:disabled{opacity:.3;pointer-events:none}
+.btn svg{width:16px;height:16px}
+.btn-primary{background:var(--acc);border-color:var(--acc);color:#fff;box-shadow:0 6px 20px rgba(59,130,246,.28)}
+.btn-danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.45);color:#fca5a5}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--acc2)}
+.btn-sm{padding:7px 11px;font-size:12px;border-radius:10px}
+.btn-block{width:100%;padding:13px}
+.btn.on{background:var(--accbg);border-color:rgba(59,130,246,.55);color:var(--acc2)}
+.btn-foul{color:var(--warn);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08)}
+.link-del{font-size:11px;color:var(--dim);padding:6px}
+.link-del:active{color:var(--bad)}
+
+/* --- plakietki --- */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;background:var(--s3);color:var(--tx2);white-space:nowrap}
+.badge svg{width:14px;height:14px}
+.badge-acc{background:var(--accbg);color:#93c5fd;border:1px solid rgba(59,130,246,.3)}
+.badge-solid{background:var(--acc);color:#fff}
+.badge-red{background:rgba(239,68,68,.15);color:#fca5a5}
+
+.banner{border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600;line-height:1.4}
+.banner-warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);color:#fcd34d}
+.banner-acc{background:var(--accbg);border:1px solid rgba(59,130,246,.4);color:#bfdbfe}
+
+/* --- tabela ramek --- */
+.board{display:grid;grid-template-columns:repeat(9,minmax(0,1fr)) 1.5fr;background:#0b0b0d;border:1px solid var(--line2);border-radius:12px;overflow:hidden}
+.fr{display:flex;flex-direction:column;border-right:1px solid var(--line2);min-width:0;transition:background .15s}
+.fr:last-child{border-right:0}
+.fr.active{background:#18181f}
+.fr.click{cursor:pointer}
+.fr.click:active{background:#202028}
+.fr-h{background:var(--s4);color:var(--tx2);font-size:11px;font-weight:800;text-align:center;padding:2px 0}
+.fr.active .fr-h{background:var(--acc);color:#fff}
+.fr-r{display:flex;border-bottom:1px solid var(--line2)}
+.rl{flex:1;height:27px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;min-width:0}
+.rl+.rl{border-left:1px solid var(--line2)}
+.rl.cur{background:rgba(59,130,246,.3);box-shadow:inset 0 -2px 0 var(--acc)}
+.rl.x{color:#93c5fd} .rl.sp{color:#6ee7b7} .rl.f{color:var(--warn)}
+.rl.split span{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--bad);color:#fca5a5;font-size:12px}
+.fr-t{height:31px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;letter-spacing:-.02em}
+.fr-t.max{font-size:12px;color:var(--mut);font-weight:700}
+
+/* --- gracze (chipy) --- */
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:1px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--line2);border-radius:99px;padding:5px 5px 5px 12px;font-size:12.5px;font-weight:700;color:var(--tx2)}
+.chip b{background:var(--s4);border-radius:99px;padding:3px 9px;font-size:12px;color:var(--tx)}
+.chip.on{border-color:var(--acc);background:var(--accbg);color:#fff}
+.chip.on b{background:var(--acc)}
+.chip.done{opacity:.65}
+.chip .x{color:var(--dim);font-size:16px;line-height:1;padding:0 6px 0 2px}
+.chip.add{padding:6px 12px;color:var(--acc2);border-style:dashed}
+
+/* --- kręgle 3D --- */
+.deck-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0 2px;gap:6px}
+.deck{display:flex;flex-direction:column;align-items:center;gap:12px;padding:4px 0;touch-action:none}
+.deck-row{display:flex;gap:16px;justify-content:center}
+.pin{width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;
+  background:radial-gradient(circle at 35% 30%,#fff 0%,#f1f5f9 55%,#cbd5e1 100%);
+  box-shadow:0 6px 14px rgba(0,0,0,.9),inset 0 -3px 6px rgba(0,0,0,.25),inset 0 2px 4px rgba(255,255,255,.9);
+  transition:transform .12s cubic-bezier(.2,.8,.2,1),background .15s,opacity .15s;touch-action:none}
+.pin-in{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(148,163,184,.45);display:flex;align-items:center;justify-content:center;pointer-events:none}
+.pin-num{color:#0a0a0a;font-weight:900;font-size:20px;pointer-events:none}
+.pin:active{transform:scale(.92)}
+.pin.knocked{background:radial-gradient(circle at 35% 30%,#f87171 0%,#dc2626 65%,#991b1b 100%);box-shadow:0 0 18px rgba(239,68,68,.5),inset 0 2px 4px rgba(255,255,255,.3);transform:scale(.93)}
+.pin.knocked .pin-num{color:#fff;text-decoration:line-through}
+.pin.knocked .pin-in{border-color:rgba(255,255,255,.35)}
+.pin.dead{background:#121214;box-shadow:inset 0 2px 5px rgba(0,0,0,.8);opacity:.4;pointer-events:none}
+.pin.dead .pin-num{color:#52525b}
+.pin.dead .pin-in{border-color:#27272a}
+@media (max-width:370px){.pin{width:54px;height:54px}.pin-in{width:38px;height:38px}.deck-row{gap:13px}.pin-num{font-size:18px}}
+
+/* --- szybki wpis --- */
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.pad .btn{padding:15px 0;font-size:21px;font-weight:900;border-radius:14px}
+
+/* --- przyciski akcji --- */
+.actions{display:grid;grid-template-columns:1fr 64px 1fr;gap:8px}
+.actions .btn{padding:16px 8px;font-size:19px;font-weight:900;border-radius:18px}
+
+/* --- koniec gry --- */
+.fin{text-align:center;display:flex;flex-direction:column;gap:10px;padding:18px 14px}
+.fin-badge{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--acc2);font-weight:800}
+.fin-score{font-size:52px;font-weight:900;letter-spacing:-.03em;line-height:1}
+.fin-players{display:flex;flex-direction:column;gap:6px}
+.fin-pl{display:flex;justify-content:space-between;background:var(--s2);border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px}
+.fin-pl.win{border:1px solid rgba(16,185,129,.5);color:#6ee7b7}
+
+/* --- listy --- */
+.item{background:var(--s1);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;align-items:center;gap:10px}
+.item.cur{border-color:var(--acc);box-shadow:0 0 0 1px rgba(59,130,246,.25)}
+.item .main{flex:1;min-width:0;cursor:pointer}
+.item h4{margin:4px 0 0;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis}
+.item .side{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.score-big{font-size:23px;font-weight:900;letter-spacing:-.02em}
+.empty{background:var(--s1);border:1px dashed var(--line2);border-radius:var(--r);padding:22px;text-align:center;font-size:12.5px;color:var(--mut)}
+.ball-dot{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:inset -2px -2px 4px rgba(0,0,0,.45),inset 2px 2px 3px rgba(255,255,255,.35)}
+
+/* --- statystyki --- */
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:#09090b;padding:4px;border-radius:12px;border:1px solid var(--line)}
+.seg button{padding:9px;border-radius:9px;font-size:12px;font-weight:800;color:var(--mut)}
+.seg button.on{background:var(--acc);color:#fff}
+.tile{background:var(--s1);border:1px solid var(--line);border-radius:var(--r);padding:12px;min-width:0}
+.tile .k{font-size:11px;color:var(--mut);font-weight:600}
+.tile .v{font-size:25px;font-weight:900;letter-spacing:-.02em;margin-top:2px}
+.tile .s{font-size:11px;color:var(--dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini{background:var(--s2);border-radius:12px;padding:10px 8px;text-align:center}
+.mini .k{font-size:11px;color:var(--mut);font-weight:600}
+.mini .v{font-size:19px;font-weight:900;margin:2px 0}
+.mini .s{font-size:10.5px;color:var(--dim)}
+.heat{display:flex;flex-direction:column;align-items:center;gap:7px;padding:4px 0 8px}
+.heat-row{display:flex;gap:9px}
+.hp{width:46px;height:46px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;border:1px solid var(--line2)}
+.hp i{font-style:normal;font-size:9.5px;color:var(--tx2);font-weight:700}
+.hp b{font-size:12px}
+.leave{display:grid;grid-template-columns:70px 1fr 64px;align-items:center;gap:8px;font-size:12px;padding:5px 0}
+.leave .nm{font-weight:800}
+.bar{height:7px;background:var(--s3);border-radius:9px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:9px}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{text-align:left;color:var(--mut);font-weight:600;font-size:11px;padding:6px 4px;border-bottom:1px solid var(--line)}
+.tbl td{padding:8px 4px;border-bottom:1px solid var(--line);font-weight:600}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .n{text-align:right;font-variant-numeric:tabular-nums}
+.chart-box{position:relative;width:100%;height:180px}
+.chart-box canvas{width:100%;height:100%;display:block}
+
+/* --- ustawienia --- */
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.set-row:last-child{border-bottom:0;padding-bottom:0}
+.set-row .t{font-size:14px;font-weight:700}
+.set-row .d{font-size:11.5px;color:var(--mut);margin-top:2px}
+.switch{position:relative;width:46px;height:27px;flex:none}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch span{position:absolute;inset:0;background:var(--s4);border-radius:99px;transition:.2s}
+.switch span::after{content:'';position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.2s}
+.switch input:checked+span{background:var(--acc)}
+.switch input:checked+span::after{transform:translateX(19px)}
+
+/* --- dolna nawigacja --- */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(8,8,10,.92);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:5px 6px calc(5px + var(--safe-b))}
+.nav-in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.nav button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0 5px;font-size:10.5px;font-weight:700;color:var(--dim);border-radius:12px;position:relative;transition:color .15s}
+.nav button svg{width:23px;height:23px;transition:transform .15s}
+.nav button.on{color:var(--tx)}
+.nav button.on svg{color:var(--acc2);transform:translateY(-1px)}
+.nav button.on::before{content:'';position:absolute;top:-5px;width:26px;height:3px;border-radius:0 0 3px 3px;background:var(--acc)}
+.nav .ndot{position:absolute;top:5px;left:calc(50% + 8px);width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 2px #08080a}
+
+/* --- okna (modale) --- */
+.modal{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.78);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);padding:10px 10px calc(10px + var(--safe-b))}
+.modal.open{display:flex;animation:fade .15s}
+.sheet{width:100%;max-width:500px;max-height:88vh;max-height:88dvh;overflow:auto;background:var(--s1);border:1px solid var(--line2);border-radius:22px;padding:16px;animation:up .22s cubic-bezier(.2,.8,.2,1)}
+.sheet h3{margin:0;font-size:16px;font-weight:800}
+.sheet-grip{width:38px;height:4px;border-radius:4px;background:var(--s4);margin:-6px auto 12px}
+@keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+.meta-box{background:var(--s2);border-radius:12px;padding:11px 12px;font-size:12.5px;display:flex;flex-direction:column;gap:5px}
+.meta-box span.k{color:var(--mut)}
+.dlg-btns{display:flex;gap:8px;margin-top:14px}
+.dlg-btns .btn{flex:1;padding:12px}
+
+/* --- toast + efekty --- */
+.toast{position:fixed;top:calc(12px + var(--safe-t));left:50%;transform:translateX(-50%);z-index:80;background:#18181b;border:1px solid rgba(59,130,246,.5);color:#fff;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:99px;box-shadow:0 10px 30px rgba(0,0,0,.6);max-width:calc(100vw - 32px);text-align:center;animation:toastIn .2s ease}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+.celebrate{position:fixed;inset:0;pointer-events:none;z-index:70;display:flex;align-items:center;justify-content:center}
+.celebrate .word{font-size:clamp(40px,13vw,64px);font-weight:900;letter-spacing:-.03em;background:linear-gradient(180deg,#fff 10%,#93c5fd 90%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 8px 28px rgba(59,130,246,.6));animation:pop 1.15s cubic-bezier(.2,.9,.2,1) forwards;text-align:center;padding:0 12px}
+.celebrate .word.green{background-image:linear-gradient(180deg,#fff 10%,#6ee7b7 90%);filter:drop-shadow(0 8px 28px rgba(16,185,129,.55))}
+.celebrate .word.gold{background-image:linear-gradient(180deg,#fff7d6 10%,#f59e0b 90%);filter:drop-shadow(0 8px 28px rgba(245,158,11,.6))}
+@keyframes pop{0%{transform:scale(.4);opacity:0}18%{transform:scale(1.12);opacity:1}30%{transform:scale(1)}75%{opacity:1}100%{transform:scale(1.04) translateY(-24px);opacity:0}}
+.confetti{position:fixed;top:-14px;width:8px;height:14px;border-radius:2px;z-index:71;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translate3d(var(--dx),110vh,0) rotate(var(--rot))}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:#000}
+::-webkit-scrollbar-thumb{background:#27272a;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============================================================ -->
+  <!-- ZAKŁADKA: TOR                                                 -->
+  <!-- ============================================================ -->
+  <main id="tab-tor" class="tab on">
+
+    <div id="migrate-banner" class="banner banner-acc stack" hidden>
+      <span>👋 <b>Masz gry w starej wersji (plik HTML)?</b> Otwórz ją, zrób <b>Więcej → Pobierz kopię</b>, a tutaj wczytaj ten plik.</span>
+      <div class="row">
+        <button type="button" class="btn btn-sm btn-primary" data-action="import">Wczytaj kopię</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-action="dismiss-migrate">Zaczynam od zera</button>
+      </div>
+    </div>
+
+    <div id="tor-toolbar" class="row between">
+      <div class="row">
+        <button type="button" class="btn btn-sm" data-action="new-game">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nowa
+        </button>
+        <button type="button" class="btn btn-sm" id="btn-undo" data-action="undo" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>Cofnij
+        </button>
+      </div>
+      <button type="button" class="btn btn-sm" id="btn-quick" data-action="toggle-quick" title="Wpisuj liczbę kręgli zamiast zaznaczać każdy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>Szybki wpis
+      </button>
+    </div>
+
+    <!-- Dzień / sesja + tytuł gry -->
+    <section id="sess-card" class="card" style="padding:10px">
+      <div id="sess-row" class="row">
+        <span class="badge badge-acc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <span id="sess-date">—</span>
+        </span>
+        <input id="sess-title" class="input input-sm grow" type="text" maxlength="60" placeholder="Tytuł dnia (np. Liga – kolejka 1)" title="Nazwa dzisiejszego wyjścia na kręgielnię">
+        <button type="button" class="btn btn-sm" id="sess-season" data-action="tab" data-tab="sesje" title="Sezon — przejdź do listy dni">Sezon</button>
+        <button type="button" class="btn btn-sm btn-danger" data-action="end-session" title="Zakończ ten dzień / sesję">Zakończ</button>
+      </div>
+      <div class="row mt8">
+        <input id="game-title" class="input input-sm grow" type="text" maxlength="40" placeholder="Tytuł gry">
+        <input id="game-lane" class="input input-sm lane" type="text" inputmode="numeric" maxlength="4" placeholder="Tor nr" title="Numer toru">
+        <span id="game-counter" class="xs strong muted" style="white-space:nowrap">Gra #1</span>
+      </div>
+    </section>
+
+    <!-- Brak aktywnego dnia (po zakończeniu sesji) -->
+    <section id="no-session" class="card stack" hidden>
+      <h2>Brak aktywnego dnia 🎳</h2>
+      <div id="no-session-info" class="small muted"></div>
+      <button type="button" class="btn btn-primary btn-block" data-action="new-day">+ Rozpocznij nowy dzień (dzisiaj)</button>
+      <div class="g2">
+        <button type="button" class="btn" data-action="tab" data-tab="sesje">Nowy z nazwą / datą</button>
+        <button type="button" id="no-session-resume" class="btn" data-action="resume-session">Wznów ostatni</button>
+      </div>
+    </section>
+
+    <div id="game-area" class="sub">
+    <div id="edit-banner" class="banner banner-acc row between" hidden>
+      <span id="edit-banner-text" class="grow"></span>
+      <button type="button" class="btn btn-sm" data-action="cancel-edit">Anuluj</button>
+    </div>
+
+    <div id="players" class="chips"></div>
+
+    <div id="board" class="board" aria-label="Tabela wyników"></div>
+
+    <div class="row between xs" style="padding:0 2px">
+      <span id="status" class="strong tx2">Ramka 1 • Rzut 1</span>
+      <span class="muted">Maks. możliwy: <b id="max-badge" class="acc">300</b></span>
+    </div>
+
+    <!-- Kręgle -->
+    <section id="deck-wrap" class="deck-wrap">
+      <div id="pin-deck" class="deck"></div>
+      <p class="xs dim center" style="margin:2px 0 0">Dotknij lub przeciągnij po zbitych kręglach • dotknij ramki, by ją poprawić</p>
+    </section>
+
+    <!-- Szybki wpis liczbowy -->
+    <section id="pad-wrap" class="card" hidden>
+      <div class="row between">
+        <span class="sec-title" style="margin:0">Ile kręgli zbitych?</span>
+        <span id="pad-info" class="xs muted"></span>
+      </div>
+      <div id="pad" class="pad"></div>
+    </section>
+
+    <!-- Akcje -->
+    <section id="actions" class="actions">
+      <button type="button" id="btn-strike" class="btn" data-action="strike">Strike</button>
+      <button type="button" class="btn btn-foul" data-action="foul" title="Faul (przekroczenie linii) – 0 pkt">F</button>
+      <button type="button" id="btn-next" class="btn btn-primary" data-action="next">Next (0)</button>
+    </section>
+
+    <!-- Koniec gry -->
+    <section id="finished" class="card fin" hidden>
+      <span id="fin-badge" class="fin-badge">Podsumowanie gry</span>
+      <div id="fin-score" class="fin-score">0</div>
+      <p id="fin-summary" class="small muted"></p>
+      <div id="fin-players" class="fin-players"></div>
+      <div class="field" style="text-align:left">
+        <label class="label" for="fin-title">Nazwa / tytuł tej gry</label>
+        <input id="fin-title" class="input" type="text" maxlength="40" placeholder="np. Mecz 1 – tor 4">
+      </div>
+      <div class="row">
+        <button type="button" class="btn grow" data-action="undo" style="padding:14px">Popraw rzut</button>
+        <button type="button" id="fin-save" class="btn btn-primary grow2" data-action="save-game" style="padding:14px">Zapisz grę</button>
+      </div>
+    </section>
+
+    <!-- Sprzęt i linia -->
+    <section class="card">
+      <div class="row between">
+        <span class="sec-title" style="margin:0"><i class="dot-acc"></i>Sprzęt, olej i linia <span id="eq-owner" class="acc" style="text-transform:none;letter-spacing:0"></span></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-equip" data-action="toggle-equip">Zwiń</button>
+      </div>
+      <div id="equip-body" class="g2 mt12">
+        <div class="field">
+          <label class="label" for="eq-ball">Kula</label>
+          <select id="eq-ball" class="input input-sm"></select>
+        </div>
+        <div class="field">
+          <label class="label" for="eq-surface">Powłoka (surface)</label>
+          <input id="eq-surface" class="input input-sm" type="text" list="surface-presets" placeholder="np. 2000 Abralon">
+        </div>
+        <div class="field">
+          <div class="row between" style="gap:4px">
+            <label class="label" for="eq-oil">Smarowanie</label>
+            <button type="button" class="label acc" style="font-weight:800" data-action="oil-open" data-from="tor">🔎 Baza</button>
+          </div>
+          <input id="eq-oil" class="input input-sm" type="text" list="oil-presets" placeholder="np. House Shot">
+        </div>
+        <div class="field">
+          <label class="label">Linia: start → cel (deska)</label>
+          <div class="row" style="gap:5px">
+            <input id="eq-start" class="input input-sm board-in" type="number" inputmode="numeric" min="1" max="39" title="Deska startowa">
+            <span class="muted strong">→</span>
+            <input id="eq-target" class="input input-sm board-in" type="number" inputmode="numeric" min="1" max="39" title="Cel na strzałkach">
+          </div>
+        </div>
+        <div id="oil-hint" class="span2"></div>
+        <div id="line-history" class="xs muted span2"></div>
+      </div>
+    </section>
+    </div><!-- /game-area -->
+
+    <datalist id="surface-presets">
+      <option value="500 Abralon"><option value="1000 Abralon"><option value="1500 Abralon"><option value="2000 Abralon">
+      <option value="3000 Abralon"><option value="4000 Abralon"><option value="Reacta Gloss / Polish"><option value="Fabryczna">
+    </datalist>
+    <datalist id="oil-presets"></datalist>
+  </main>
+
+  <!-- ============================================================ -->
+  <!-- ZAKŁADKA: SESJE                                               -->
+  <!-- ============================================================ -->
+  <section id="tab-sesje" class="tab">
+    <div class="card">
+      <h2>Nowy dzień / sesja</h2>
+      <p class="xs muted">Osobny wpis dla meczu ligowego, treningu lub turnieju.</p>
+      <form id="form-session" class="stack mt12" autocomplete="off">
+        <div class="field">
+          <label class="label" for="ns-title">Nazwa / tytuł dnia *</label>
+          <input id="ns-title" class="input" type="text" maxlength="60" required placeholder="np. Poniedziałkowa Liga – kolejka 2">
+        </div>
+        <div class="g2">
+          <div class="field">
+            <label class="label" for="ns-date">Data</label>
+            <input id="ns-date" class="input" type="date" required>
+          </div>
+          <div class="field">
+            <label class="label" for="ns-season">Sezon</label>
+            <input id="ns-season" class="input" type="text" list="season-presets" required placeholder="Sezon 2026/2027">
+            <datalist id="season-presets"></datalist>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">+ Utwórz i przejdź na tor</button>
+      </form>
+    </div>
+    <div class="list-head"><h3>Twoje dni na kręgielni</h3><span id="sessions-count" class="xs muted"></span></div>
+    <div id="sessions-list" class="stack"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- ZAKŁADKA: KULE                                                -->
+  <!-- ============================================================ -->
+  <section id="tab-kule" class="tab">
+    <div class="card">
+      <h2>Dodaj kulę do arsenału</h2>
+      <p class="xs muted">Zapisz kule i ich aktualną powłokę — wybierzesz je szybko w trakcie gry, a statystyki pokażą, na której grasz najlepiej.</p>
+      <form id="form-ball" class="stack mt12" autocomplete="off">
+        <div class="row" style="align-items:flex-end">
+          <div class="field grow">
+            <label class="label" for="ball-name">Nazwa kuli *</label>
+            <input id="ball-name" class="input" type="text" maxlength="40" required placeholder="np. Storm Phaze II">
+          </div>
+          <div class="field" style="width:96px">
+            <label class="label" for="ball-weight">Waga</label>
+            <select id="ball-weight" class="input">
+              <option>16 lbs</option><option selected>15 lbs</option><option>14 lbs</option><option>13 lbs</option><option>12 lbs</option><option>11 lbs</option><option>10 lbs</option>
+            </select>
+          </div>
+          <div class="field" style="width:54px">
+            <label class="label" for="ball-color">Kolor</label>
+            <input id="ball-color" class="input" type="color" value="#3b82f6">
+          </div>
+        </div>
+        <div class="g2">
+          <div class="field">
+            <label class="label" for="ball-surface">Aktualna powłoka</label>
+            <input id="ball-surface" class="input" type="text" list="surface-presets" placeholder="np. 2000 Abralon">
+          </div>
+          <div class="field">
+            <label class="label" for="ball-notes">Typ / uwagi</label>
+            <input id="ball-notes" class="input" type="text" maxlength="60" placeholder="np. Solid / świeży olej">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">+ Dodaj kulę do torby</button>
+      </form>
+    </div>
+    <div class="list-head"><h3>Twoja torba</h3><span id="arsenal-count" class="xs muted"></span></div>
+    <div id="arsenal-list" class="stack"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- ZAKŁADKA: STATYSTYKI                                          -->
+  <!-- ============================================================ -->
+  <section id="tab-staty" class="tab">
+    <button type="button" class="card row between" data-action="oil-open" style="text-align:left;width:100%">
+      <span class="grow">
+        <b style="font-size:15px">🔎 Baza smarowań</b>
+        <span class="xs muted" style="display:block;margin-top:3px">Sprawdź, czy grałeś już na danym oleju — jakimi kulami, liniami i z jakim wynikiem</span>
+      </span>
+      <span class="acc strong" style="font-size:20px">›</span>
+    </button>
+    <div class="card stack">
+      <div class="seg">
+        <button type="button" id="sm-day" class="on" data-action="stats-mode" data-mode="day">Dzień / sesja</button>
+        <button type="button" id="sm-season" data-action="stats-mode" data-mode="season">Sezon</button>
+      </div>
+      <div id="st-day-wrap" class="field">
+        <label class="label" for="st-session">Dzień / mecz</label>
+        <select id="st-session" class="input input-sm"></select>
+      </div>
+      <div id="st-season-wrap" class="field" hidden>
+        <label class="label" for="st-season">Sezon</label>
+        <select id="st-season" class="input input-sm"></select>
+      </div>
+      <div id="st-player-wrap" class="field">
+        <label class="label" for="st-player">Gracz</label>
+        <select id="st-player" class="input input-sm"></select>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="tile"><div class="k">Średnia</div><div class="v" id="st-avg">0.0</div><div class="s" id="st-count">0 gier</div></div>
+      <div class="tile"><div class="k">Najwyższa gra</div><div class="v acc" id="st-high">0</div><div class="s" id="st-high-desc">—</div></div>
+      <div class="tile span2 row between">
+        <div class="grow"><div class="k">Najlepsza seria (3 gry z jednego dnia)</div><div class="s" id="st-series-desc">Wymagane min. 3 gry w jednej sesji</div></div>
+        <div class="v okc" id="st-series">0</div>
+      </div>
+      <div class="tile"><div class="k">Średnio w 1. rzucie</div><div class="v" id="st-first">0.0</div><div class="s">kręgli na pierwszą kulę</div></div>
+      <div class="tile"><div class="k">Zamknięte ramki</div><div class="v" id="st-clean">0%</div><div class="s" id="st-clean-desc">czyste gry: 0</div></div>
+    </div>
+
+    <div class="card">
+      <h3 class="sec-title">Skuteczność</h3>
+      <div class="g2">
+        <div class="mini"><div class="k">Strike</div><div class="v" id="st-strike">0%</div><div class="s" id="st-strike-raw">0 / 0</div></div>
+        <div class="mini"><div class="k">Spare</div><div class="v acc" id="st-spare">0%</div><div class="s" id="st-spare-raw">0 / 0</div></div>
+        <div class="mini"><div class="k">Dobicia 1 kręgla</div><div class="v warnc" id="st-single">0%</div><div class="s" id="st-single-raw">0 / 0</div></div>
+        <div class="mini"><div class="k">Dobite splity</div><div class="v badc" id="st-split">0%</div><div class="s" id="st-split-raw">0 / 0</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:8px">
+        <h3 class="sec-title" style="margin:0">Wykres wyników</h3>
+        <span class="xs dim">— — średnia</span>
+      </div>
+      <div class="chart-box"><canvas id="chart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3 class="sec-title">Które kręgle zostają po 1. rzucie</h3>
+      <div id="st-heat" class="heat"></div>
+      <h3 class="sec-title mt12">Najczęstsze układy (leave) i dobicia</h3>
+      <div id="st-leaves"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="sec-title">Wyniki według kuli</h3>
+      <div id="st-balls"></div>
+      <h3 class="sec-title mt12">Wyniki według smarowania</h3>
+      <div id="st-oils"></div>
+    </div>
+
+    <div class="list-head"><h3 id="st-history-h">Zapisane gry</h3></div>
+    <div id="st-history" class="stack"></div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- ZAKŁADKA: WIĘCEJ                                              -->
+  <!-- ============================================================ -->
+  <section id="tab-wiecej" class="tab">
+    <div class="card">
+      <h2>Profil</h2>
+      <div class="field mt8">
+        <label class="label" for="set-name">Twoje imię (gracz 1 — Twoje statystyki)</label>
+        <input id="set-name" class="input" type="text" maxlength="24" placeholder="Ja">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Na torze</h2>
+      <div class="set-row">
+        <div><div class="t">Ekran nie gaśnie</div><div class="d" id="wl-desc">Telefon nie zablokuje się w trakcie gry</div></div>
+        <label class="switch"><input type="checkbox" id="set-wl"><span></span></label>
+      </div>
+      <div class="set-row">
+        <div><div class="t">Wibracje</div><div class="d">Delikatne drgnięcie przy kręglach, mocniejsze przy strike'u</div></div>
+        <label class="switch"><input type="checkbox" id="set-vib"><span></span></label>
+      </div>
+      <div class="set-row">
+        <div><div class="t">Animacje i konfetti</div><div class="d">STRIKE!, TURKEY!, SPARE!, konfetti przy 200+</div></div>
+        <label class="switch"><input type="checkbox" id="set-anim"><span></span></label>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <h2>Kopia zapasowa</h2>
+      <p class="xs muted">Wszystkie dane są zapisane tylko w tej przeglądarce. Wyczyszczenie danych przeglądarki albo otwarcie pliku z innego miejsca może je ukryć — rób kopię regularnie (np. wyślij ją sobie na Dysk/mail).</p>
+      <div id="backup-banner"></div>
+      <p id="backup-info" class="xs muted"></p>
+      <div class="g2">
+        <button type="button" class="btn btn-primary" data-action="export">Pobierz kopię</button>
+        <button type="button" class="btn" data-action="share">Udostępnij…</button>
+      </div>
+      <button type="button" class="btn btn-block" data-action="import">Wczytaj kopię z pliku</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+    </div>
+
+    <div class="card stack">
+      <h2>Dane</h2>
+      <p id="data-info" class="xs muted"></p>
+      <button type="button" class="btn btn-danger btn-block" data-action="delete-all">Usuń wszystkie dane</button>
+    </div>
+    <p class="xs dim center">Bowling Pro Tracker <span id="app-version"></span> • działa bez internetu</p>
+  </section>
+</div>
+
+<!-- DOLNA NAWIGACJA -->
+<nav class="nav">
+  <div class="nav-in">
+    <button type="button" id="nav-tor" class="on" data-action="tab" data-tab="tor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2.2"/><circle cx="8" cy="11" r="2.2"/><circle cx="16" cy="11" r="2.2"/><circle cx="4.5" cy="17.5" r="2.2"/><circle cx="12" cy="17.5" r="2.2"/><circle cx="19.5" cy="17.5" r="2.2"/></svg>Tor
+    </button>
+    <button type="button" id="nav-sesje" data-action="tab" data-tab="sesje">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Sesje
+    </button>
+    <button type="button" id="nav-kule" data-action="tab" data-tab="kule">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="10" cy="8.5" r="1.1" fill="currentColor"/><circle cx="13.6" cy="8" r="1.1" fill="currentColor"/><circle cx="12.2" cy="11.4" r="1.1" fill="currentColor"/></svg>Kule
+    </button>
+    <button type="button" id="nav-staty" data-action="tab" data-tab="staty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Staty
+    </button>
+    <button type="button" id="nav-wiecej" data-action="tab" data-tab="wiecej">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Więcej
+      <span id="nav-dot" class="ndot" hidden></span>
+    </button>
+  </div>
+</nav>
+
+<!-- OKNO: szczegóły gry -->
+<div id="game-modal" class="modal" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <div class="row between" style="margin-bottom:12px">
+      <h3 id="gm-title">Szczegóły gry</h3>
+      <button type="button" class="btn btn-sm" data-action="close-modal">Zamknij</button>
+    </div>
+    <div id="gm-board" class="board" style="margin-bottom:10px"></div>
+    <div id="gm-meta" class="meta-box"></div>
+    <div class="dlg-btns">
+      <button type="button" class="btn btn-danger" id="gm-delete" data-action="delete-game">Usuń</button>
+      <button type="button" class="btn btn-primary" id="gm-edit" data-action="edit-game">Edytuj grę</button>
+    </div>
+  </div>
+</div>
+
+<!-- OKNO: baza smarowań -->
+<div id="oil-modal" class="modal" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <div class="row between">
+      <h3>🔎 Baza smarowań</h3>
+      <button type="button" class="btn btn-sm" data-action="close-modal">Zamknij</button>
+    </div>
+    <input id="oil-q" class="input mt12" type="search" list="oil-presets" autocomplete="off" placeholder="Wpisz smarowanie, np. Shark, THS, 42">
+    <div id="oil-results" class="stack mt12"></div>
+  </div>
+</div>
+
+<!-- OKNO: pytanie / potwierdzenie / tekst -->
+<div id="dlg" class="modal" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <h3 id="dlg-title"></h3>
+    <p id="dlg-msg" class="small muted" style="margin:8px 0 0;line-height:1.45"></p>
+    <div id="dlg-input-wrap" class="mt12" hidden><input id="dlg-input" class="input" type="text" maxlength="24"></div>
+    <div id="dlg-btns" class="dlg-btns"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<div id="celebrate" class="celebrate"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   NARZĘDZIA
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const FULL = () => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const clone = o => JSON.parse(JSON.stringify(o));
+const DECK_ROWS = [[7, 8, 9, 10], [4, 5, 6], [2, 3], [1]];
+
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function plural(n, one, few, many) {
+  const n10 = n % 10, n100 = n % 100;
+  if (n === 1) return one;
+  if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) return few;
+  return many;
+}
+const gamesWord = n => `${n} ${plural(n, 'gra', 'gry', 'gier')}`;
+const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function fmtDate(iso) {
+  if (!iso || !String(iso).includes('-')) return iso || '';
+  const [y, m, d] = String(iso).split('-');
+  return `${d}.${m}.${y}`;
+}
+function currentSeason() {
+  const d = new Date(), y = d.getFullYear();
+  return (d.getMonth() + 1) >= 9 ? `Sezon ${y}/${y + 1}` : `Sezon ${y - 1}/${y}`;
+}
+function validColor(c) { return /^#[0-9a-f]{6}$/i.test(c || '') ? c : '#3b82f6'; }
+
+/* =====================================================================
+   PAMIĘĆ (localStorage) — z automatyczną migracją ze starej wersji
+   ===================================================================== */
+const K = {
+  ARSENAL: 'bowling_pro_arsenal_v3', SESSIONS: 'bowling_pro_sessions_v3', ACTIVE: 'bowling_pro_active_session_v3',
+  GAMES: 'bowling_pro_games_v3', CURRENT: 'bowling_pro_current_v3', UNDO: 'bowling_pro_undo_v3',
+  PARKED: 'bowling_pro_parked_v3', SETTINGS: 'bowling_pro_settings_v3'
+};
+const LEGACY = {
+  ARSENAL: ['bowling_pro_arsenal_v2', 'bowling_pro_arsenal_v1'], SESSIONS: ['bowling_pro_sessions_v2'],
+  ACTIVE: ['bowling_pro_active_session_v2'], GAMES: ['bowling_pro_games_v2', 'bowling_pro_games_v1'],
+  CURRENT: ['bowling_pro_current_v2']
+};
+const store = {
+  get(key, legacy = []) {
+    for (const k of [key, ...legacy]) {
+      try { const raw = localStorage.getItem(k); if (raw !== null) return JSON.parse(raw); }
+      catch (e) { console.warn('Odczyt', k, e); }
+    }
+    return null;
+  },
+  raw(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+  set(key, val) {
+    try { localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val)); return true; }
+    catch (e) { toast('⚠️ Nie udało się zapisać danych (pełna pamięć?). Zrób kopię zapasową!'); return false; }
+  },
+  del(key) { try { localStorage.removeItem(key); } catch (e) {} }
+};
+
+const DEFAULT_SETTINGS = { playerName: 'Ja', wakeLock: true, vibrate: true, animations: true, quickEntry: false, equipCollapsed: false, lastBackup: null };
+const DEFAULT_ARSENAL = [
+  { id: 'ball_1', name: 'Storm Phaze II', weight: '15 lbs', surface: '2000 Abralon', notes: 'Benchmark / średni i ciężki olej', color: '#7c3aed' },
+  { id: 'ball_2', name: 'Hammer Purple Pearl', weight: '15 lbs', surface: '1000 Abralon', notes: 'Urethane / krótkie smarowanie i dobicia', color: '#a855f7' }
+];
+
+let settings = { ...DEFAULT_SETTINGS };
+let arsenal = [], sessions = [], savedGames = [], undoStack = [];
+let activeSessionId = '';
+let gameState = null;
+let parked = null;          // gra „odłożona” na czas edycji zapisanej gry
+let currentTab = 'tor';
+let statsMode = 'day';
+
+function defaultMeta() {
+  return { ballId: '', ballName: 'Brak / Własna', surface: '', oilPattern: 'House Shot (THS)', startBoard: 25, targetBoard: 12, lineHistory: [] };
+}
+function newPlayer(name, meta) {
+  return {
+    name, frames: Array.from({ length: 10 }, () => ({ rolls: [] })), currentFrame: 0,
+    standingPins: FULL(), isFinished: false, meta: meta ? { ...defaultMeta(), ...clone(meta) } : defaultMeta()
+  };
+}
+function newGameState(prev) {
+  if (!prev || prev.editingGameId) {
+    return { gameTitle: '', lane: '', players: [newPlayer(settings.playerName, null)], active: 0, selectedPins: [], editingGameId: null };
+  }
+  const players = prev.players.map(p => newPlayer(p.name, { ...p.meta, lineHistory: [] }));
+  return { gameTitle: '', lane: prev.lane || '', players, active: 0, selectedPins: [], editingGameId: null };
+}
+
+function sanitizePins(arr) {
+  return Array.isArray(arr) ? arr.filter(n => Number.isInteger(n) && n >= 1 && n <= 10) : null;
+}
+function sanitizeFrames(frames) {
+  if (!Array.isArray(frames) || frames.length !== 10) return null;
+  return frames.map(f => ({
+    rolls: (f && Array.isArray(f.rolls) ? f.rolls : []).filter(r => r && Number.isFinite(r.pins)).map(r => ({
+      pins: Math.max(0, Math.min(10, Math.round(r.pins))),
+      knocked: sanitizePins(r.knocked),
+      remainingAfter: sanitizePins(r.remainingAfter),
+      isSplit: !!r.isSplit, wasFreshRack: !!r.wasFreshRack, foul: !!r.foul
+    }))
+  }));
+}
+function normalizeGame(g) {
+  if (!g || typeof g.id !== 'string') return null;
+  const frames = sanitizeFrames(g.frames);
+  if (!frames) return null;
+  const meta = { ...defaultMeta(), ...(g.meta && typeof g.meta === 'object' ? g.meta : {}) };
+  if (!Array.isArray(meta.lineHistory)) meta.lineHistory = [];
+  return {
+    id: g.id, groupId: g.groupId || null, sessionId: String(g.sessionId || ''), season: String(g.season || ''),
+    dateIso: String(g.dateIso || todayIso()), dateDisplay: String(g.dateDisplay || ''),
+    gameTitle: String(g.gameTitle || 'Gra'), score: calculateFrameScores(frames)[9] ?? (Number(g.score) || 0),
+    frames, meta, lane: String(g.lane || meta.lane || ''),
+    playerName: g.playerName ? String(g.playerName) : null, isOwner: g.isOwner !== false,
+    savedAt: g.savedAt || 0, editedAt: g.editedAt || 0
+  };
+}
+function normalizeSession(s) {
+  if (!s || typeof s.id !== 'string') return null;
+  return { id: s.id, dateIso: String(s.dateIso || todayIso()), title: String(s.title || 'Sesja'), season: String(s.season || currentSeason()), closed: !!s.closed, closedAt: s.closedAt || 0 };
+}
+function normalizeBall(b) {
+  if (!b || typeof b.id !== 'string' || !b.name) return null;
+  return { id: b.id, name: String(b.name), weight: String(b.weight || '15 lbs'), surface: String(b.surface || ''), notes: String(b.notes || ''), color: validColor(b.color) };
+}
+function normalizeCurrent(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (Array.isArray(raw.players) && raw.players.length) {
+    const players = raw.players.map(p => {
+      const frames = sanitizeFrames(p.frames);
+      if (!frames) return null;
+      return {
+        name: String(p.name || 'Gracz'), frames, currentFrame: Math.max(0, Math.min(9, p.currentFrame | 0)),
+        standingPins: sanitizePins(p.standingPins) || FULL(), isFinished: !!p.isFinished,
+        meta: { ...defaultMeta(), ...(p.meta || {}) }
+      };
+    }).filter(Boolean);
+    if (!players.length) return null;
+    return {
+      gameTitle: String(raw.gameTitle || ''), lane: String(raw.lane || ''), players,
+      active: Math.max(0, Math.min(players.length - 1, raw.active | 0)),
+      selectedPins: sanitizePins(raw.selectedPins) || [], editingGameId: raw.editingGameId || null
+    };
+  }
+  // Format starej wersji (v2): pojedynczy gracz
+  const frames = sanitizeFrames(raw.frames);
+  if (!frames) return null;
+  return {
+    gameTitle: String(raw.gameTitle || ''), lane: '',
+    players: [{
+      name: settings.playerName, frames, currentFrame: Math.max(0, Math.min(9, raw.currentFrame | 0)),
+      standingPins: sanitizePins(raw.standingPins) || FULL(), isFinished: !!raw.isFinished,
+      meta: { ...defaultMeta(), ...(raw.meta || {}) }
+    }],
+    active: 0, selectedPins: sanitizePins(raw.selectedPins) || [], editingGameId: null
+  };
+}
+
+function loadAll() {
+  settings = { ...DEFAULT_SETTINGS, ...(store.get(K.SETTINGS) || {}) };
+  const a = store.get(K.ARSENAL, LEGACY.ARSENAL);
+  arsenal = (Array.isArray(a) ? a : clone(DEFAULT_ARSENAL)).map(normalizeBall).filter(Boolean);
+  const s = store.get(K.SESSIONS, LEGACY.SESSIONS);
+  sessions = (Array.isArray(s) ? s : []).map(normalizeSession).filter(Boolean);
+  const g = store.get(K.GAMES, LEGACY.GAMES);
+  savedGames = (Array.isArray(g) ? g : []).map(normalizeGame).filter(Boolean);
+  gameState = normalizeCurrent(store.get(K.CURRENT, LEGACY.CURRENT)) || newGameState(null);
+  gameState.players[0].name = gameState.editingGameId ? gameState.players[0].name : settings.playerName;
+  const u = store.get(K.UNDO);
+  undoStack = Array.isArray(u) ? u.map(normalizeCurrent).filter(Boolean) : [];
+  const pk = store.get(K.PARKED);
+  parked = pk && pk.state ? { state: pk.state, undo: Array.isArray(pk.undo) ? pk.undo : [] } : null;
+  activeSessionId = store.raw(K.ACTIVE) || store.raw(LEGACY.ACTIVE[0]) || '';
+  saveArsenal(); saveSessions(); saveGames(); saveCurrent(); saveSettings();
+}
+const saveArsenal = () => store.set(K.ARSENAL, arsenal);
+const saveSessions = () => store.set(K.SESSIONS, sessions);
+const saveGames = () => store.set(K.GAMES, savedGames);
+const saveSettings = () => store.set(K.SETTINGS, settings);
+const saveActive = () => store.set(K.ACTIVE, activeSessionId);
+const saveParked = () => parked ? store.set(K.PARKED, parked) : store.del(K.PARKED);
+function saveCurrent() { store.set(K.CURRENT, gameState); store.set(K.UNDO, undoStack); }
+
+/* =====================================================================
+   SESJE / DZIEŃ
+   ===================================================================== */
+/* Przy starcie: aktywna zostaje niezakończona sesja z dzisiaj.
+   Jeśli dzisiejsze sesje są już zakończone — brak aktywnej (ekran „Rozpocznij nowy dzień”).
+   Jeśli dziś nie było jeszcze żadnej — tworzymy nową automatycznie. */
+function ensureTodaySession() {
+  const t = todayIso();
+  const todays = sessions.filter(s => s.dateIso === t);
+  const openToday = todays.filter(s => !s.closed);
+  const cur = openToday.find(s => s.id === activeSessionId);
+  if (cur) activeSessionId = cur.id;
+  else if (openToday.length) activeSessionId = openToday[openToday.length - 1].id;
+  else if (todays.length) activeSessionId = '';
+  else createTodaySession();
+  saveActive();
+  $('ns-date').value = t;
+  $('ns-season').value = currentSeason();
+}
+function createTodaySession() {
+  const t = todayIso();
+  let title = `Trening / Liga (${fmtDate(t)})`;
+  const same = sessions.filter(s => s.dateIso === t).length;
+  if (same) title += ` #${same + 1}`;
+  const ns = { id: 'sess_' + Date.now(), dateIso: t, title, season: currentSeason(), closed: false, closedAt: 0 };
+  sessions.push(ns);
+  activeSessionId = ns.id;
+  saveSessions(); saveActive();
+  return ns;
+}
+function getActiveSession() {
+  return sessions.find(x => x.id === activeSessionId && !x.closed) || null;
+}
+function sessionSummary(id) {
+  const gs = savedGames.filter(g => g.sessionId === id && g.isOwner);
+  const total = gs.reduce((a, g) => a + g.score, 0);
+  return { n: gs.length, total, avg: gs.length ? (total / gs.length).toFixed(1) : '—', high: gs.length ? Math.max(...gs.map(g => g.score)) : '—' };
+}
+
+async function endSession(id) {
+  id = id || activeSessionId;
+  const s = sessions.find(x => x.id === id);
+  if (!s || s.closed) return;
+  const isActive = id === activeSessionId;
+  const gameBusy = isActive && !gameState.editingGameId && hasAnyRolls();
+  if (gameBusy && allFinished()) {
+    toast('Najpierw zapisz zakończoną grę (albo kliknij „Nowa”)');
+    switchTab('tor');
+    return;
+  }
+  const sum = sessionSummary(id);
+  const ok = await askConfirm({
+    title: `Zakończyć „${s.title}”?`,
+    message: (gameBusy ? '⚠️ Masz niedokończoną grę — zostanie przerwana i nie trafi do tego dnia. ' : '')
+      + (sum.n ? `Podsumowanie: ${gamesWord(sum.n)} • suma ${sum.total} • śr. ${sum.avg} • high ${sum.high}. ` : 'Ten dzień nie ma zapisanych gier. ')
+      + 'Dzień trafi do historii — w razie potrzeby możesz go wznowić.',
+    ok: 'Zakończ dzień', danger: gameBusy
+  });
+  if (!ok) return;
+  if (gameBusy) { pushUndo(); gameState = newGameState(gameState); saveCurrent(); }
+  s.closed = true;
+  s.closedAt = Date.now();
+  saveSessions();
+  if (isActive) { activeSessionId = ''; saveActive(); }
+  switchTab(currentTab);
+  vibrate([30, 40, 30]);
+  if (sum.n) {
+    const go = await askChoice({
+      title: 'Dzień zakończony 🎳',
+      message: `${s.title}: ${gamesWord(sum.n)} • suma ${sum.total} • średnia ${sum.avg} • najwyższa ${sum.high}`,
+      buttons: [{ label: 'OK', value: null }, { label: 'Statystyki dnia', value: 'stats', cls: 'btn-primary' }]
+    });
+    if (go === 'stats') openSessionStats(id);
+  } else toast('Zakończono dzień');
+}
+function resumeSession(id) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  s.closed = false;
+  s.closedAt = 0;
+  activeSessionId = id;
+  saveSessions(); saveActive();
+  toast(`Wznowiono: ${s.title}`);
+  switchTab('tor');
+}
+function startNewDay() {
+  const ns = createTodaySession();
+  toast(`Nowy dzień: ${ns.title}`);
+  switchTab('tor');
+}
+function openSessionStats(id) {
+  statsMode = 'day';
+  switchTab('staty');
+  $('st-session').value = id;
+  setStatsMode('day');
+}
+function lastClosedSession() {
+  return sessions.filter(s => s.closed).sort((a, b) => (b.closedAt || 0) - (a.closedAt || 0))[0] || null;
+}
+function renderNoSession() {
+  const last = lastClosedSession();
+  if (last) {
+    const sum = sessionSummary(last.id);
+    $('no-session-info').innerHTML = `Ostatnio zakończony: <b class="tx2">${esc(last.title)}</b> (${fmtDate(last.dateIso)})<br>${gamesWord(sum.n)} • suma ${sum.total} • śr. <b class="okc">${sum.avg}</b> • high ${sum.high}`;
+    $('no-session-resume').hidden = false;
+    $('no-session-resume').dataset.id = last.id;
+  } else {
+    $('no-session-info').textContent = 'Rozpocznij nowy dzień, żeby zapisywać gry.';
+    $('no-session-resume').hidden = true;
+  }
+}
+const ownerGamesInSession = sid => savedGames.filter(g => g.sessionId === sid && g.isOwner).length;
+const displayName = g => g.isOwner ? settings.playerName : (g.playerName || 'Gracz');
+
+/* =====================================================================
+   SILNIK PUNKTACJI
+   ===================================================================== */
+const PIN_ADJ = { 1: [2, 3], 2: [1, 3, 4, 5], 3: [1, 2, 5, 6], 4: [2, 5, 7, 8], 5: [2, 3, 4, 6, 8, 9], 6: [3, 5, 9, 10], 7: [4, 8], 8: [4, 5, 7, 9], 9: [5, 6, 8, 10], 10: [6, 9] };
+function checkIsSplit(rem) {
+  if (rem.includes(1) || rem.length < 2) return false;
+  const seen = new Set([rem[0]]), q = [rem[0]];
+  while (q.length) {
+    const c = q.shift();
+    for (const n of PIN_ADJ[c] || []) if (rem.includes(n) && !seen.has(n)) { seen.add(n); q.push(n); }
+  }
+  return seen.size < rem.length;
+}
+/* Czy następny rzut w tej ramce jest na pełne ustawienie? */
+function rollIsFresh(rolls) {
+  let fresh = true;
+  for (const r of rolls) fresh = fresh ? r.pins === 10 : true;
+  return fresh;
+}
+function calculateFrameScores(frames) {
+  const flat = [];
+  frames.forEach(f => f.rolls.forEach(r => flat.push(r.pins)));
+  const cum = Array(10).fill(null);
+  let total = 0, cur = 0;
+  for (let f = 0; f < 10; f++) {
+    const fr = frames[f].rolls;
+    if (!fr.length) break;
+    if (f < 9) {
+      const r1 = flat[cur];
+      if (r1 === undefined) break;
+      if (r1 === 10) {
+        if (flat[cur + 1] !== undefined && flat[cur + 2] !== undefined) { total += 10 + flat[cur + 1] + flat[cur + 2]; cum[f] = total; }
+        cur += 1;
+      } else {
+        const r2 = flat[cur + 1];
+        if (r2 !== undefined) {
+          if (r1 + r2 === 10) { if (flat[cur + 2] !== undefined) { total += 10 + flat[cur + 2]; cum[f] = total; } }
+          else { total += r1 + r2; cum[f] = total; }
+        }
+        cur += 2;
+      }
+    } else {
+      const [a, b, c] = [fr[0]?.pins, fr[1]?.pins, fr[2]?.pins];
+      const bonus = a === 10 || ((a ?? 0) + (b ?? 0) === 10);
+      if (a !== undefined && b !== undefined && (!bonus || c !== undefined)) { total += a + b + (c ?? 0); cum[f] = total; }
+    }
+  }
+  return cum;
+}
+function calculateMaxPossibleScore(frames) {
+  const sim = frames.map(f => ({ rolls: f.rolls.map(r => ({ pins: r.pins })) }));
+  for (let f = 0; f < 10; f++) {
+    const r = sim[f].rolls;
+    if (f < 9) {
+      if (!r.length) r.push({ pins: 10 });
+      else if (r.length === 1 && r[0].pins < 10) r.push({ pins: 10 - r[0].pins });
+    } else {
+      if (!r.length) r.push({ pins: 10 }, { pins: 10 }, { pins: 10 });
+      else if (r.length === 1) r[0].pins === 10 ? r.push({ pins: 10 }, { pins: 10 }) : r.push({ pins: 10 - r[0].pins }, { pins: 10 });
+      else if (r.length === 2) {
+        const [a, b] = [r[0].pins, r[1].pins];
+        if (a === 10 && b < 10) r.push({ pins: 10 - b });
+        else if (a === 10 || a + b === 10) r.push({ pins: 10 });
+      }
+    }
+  }
+  return calculateFrameScores(sim)[9] ?? 0;
+}
+function lastScore(frames) {
+  const s = calculateFrameScores(frames);
+  for (let i = 9; i >= 0; i--) if (s[i] !== null) return s[i];
+  return 0;
+}
+
+/* =====================================================================
+   ANALIZA GRY (statystyki liczone zawsze od nowa z ramek)
+   ===================================================================== */
+function analyzeFrames(frames) {
+  const s = { strikes: 0, strikeOpps: 0, spares: 0, spareOpps: 0, singleSpares: 0, singleOpps: 0, splits: 0, splitConv: 0,
+    firstBallPins: 0, firstBalls: 0, firstKnown: 0, openFrames: 0, frames: 0, fouls: 0, leaves: [], pinLeft: Array(11).fill(0) };
+  frames.forEach((fr, fi) => {
+    const rolls = fr.rolls;
+    let fresh = true;
+    rolls.forEach((r, ri) => {
+      if (r.foul) s.fouls++;
+      if (fresh) {
+        s.strikeOpps++; s.firstBalls++; s.firstBallPins += r.pins;
+        if (r.pins === 10) s.strikes++;
+        else {
+          if (r.remainingAfter && !r.foul) { s.firstKnown++; r.remainingAfter.forEach(p => s.pinLeft[p]++); }
+          const next = rolls[ri + 1];
+          if (next) {
+            const left = 10 - r.pins;
+            const conv = !next.foul && next.pins === left;
+            s.spareOpps++; if (conv) s.spares++;
+            if (left === 1) { s.singleOpps++; if (conv) s.singleSpares++; }
+            if (r.isSplit) { s.splits++; if (conv) s.splitConv++; }
+            if (r.remainingAfter && r.remainingAfter.length && !r.foul) {
+              s.leaves.push({ key: [...r.remainingAfter].sort((a, b) => a - b).join('-'), conv, split: r.isSplit });
+            }
+          }
+        }
+        fresh = r.pins === 10;
+      } else fresh = true;
+    });
+    if (!rolls.length) return;
+    const a = rolls[0].pins, b = rolls[1]?.pins;
+    const complete = fi < 9 ? (a === 10 || rolls.length >= 2)
+      : (rolls.length >= 2 && (rolls.length === 3 || !(a === 10 || a + b === 10)));
+    if (!complete) return;
+    s.frames++;
+    if (!(a === 10 || (b !== undefined && a + b === 10))) s.openFrames++;
+  });
+  return s;
+}
+function aggregate(games) {
+  const t = { strikes: 0, strikeOpps: 0, spares: 0, spareOpps: 0, singleSpares: 0, singleOpps: 0, splits: 0, splitConv: 0,
+    firstBallPins: 0, firstBalls: 0, firstKnown: 0, openFrames: 0, frames: 0, fouls: 0, cleanGames: 0, leaves: {}, pinLeft: Array(11).fill(0) };
+  games.forEach(g => {
+    const a = analyzeFrames(g.frames);
+    for (const k of Object.keys(t)) if (typeof t[k] === 'number' && typeof a[k] === 'number') t[k] += a[k];
+    if (a.openFrames === 0 && a.frames === 10) t.cleanGames++;
+    for (let p = 1; p <= 10; p++) t.pinLeft[p] += a.pinLeft[p];
+    a.leaves.forEach(l => {
+      const e = t.leaves[l.key] || (t.leaves[l.key] = { n: 0, c: 0, split: l.split });
+      e.n++; if (l.conv) e.c++;
+    });
+  });
+  return t;
+}
+
+/* =====================================================================
+   AKCJE GRY
+   ===================================================================== */
+const activePlayer = () => gameState.players[gameState.active];
+const allFinished = () => gameState.players.every(p => p.isFinished);
+const hasAnyRolls = st => (st || gameState).players.some(p => p.frames.some(f => f.rolls.length));
+
+function rotatePlayer() {
+  const n = gameState.players.length;
+  for (let k = 1; k <= n; k++) {
+    const i = (gameState.active + k) % n;
+    if (!gameState.players[i].isFinished) { gameState.active = i; return; }
+  }
+}
+
+function applyRoll(knocked, opts = {}) {
+  const p = activePlayer();
+  if (!p || p.isFinished) return null;
+  const fIdx = p.currentFrame, frame = p.frames[fIdx];
+  const fresh = rollIsFresh(frame.rolls);
+  const before = [...p.standingPins];
+  let count, remaining, knockedList;
+  if (opts.foul) { count = 0; remaining = [...before]; knockedList = []; }
+  else if (opts.quickCount !== undefined && opts.quickCount !== null) {
+    count = Math.max(0, Math.min(before.length, opts.quickCount)); remaining = null; knockedList = null;
+  } else {
+    knockedList = before.filter(x => knocked.includes(x)); count = knockedList.length;
+    remaining = before.filter(x => !knockedList.includes(x));
+  }
+  const isSplit = fresh && !opts.foul && remaining !== null && count < 10 && checkIsSplit(remaining);
+  const prev = frame.rolls[frame.rolls.length - 1];
+  frame.rolls.push({ pins: count, knocked: knockedList, remainingAfter: remaining, isSplit, wasFreshRack: fresh, foul: !!opts.foul });
+
+  const leftAfter = remaining || before.slice(count);
+  const nextFresh = rollIsFresh(frame.rolls);
+  let frameDone = false;
+  if (fIdx < 9) {
+    if (frame.rolls.length === 2 || (fresh && count === 10)) { p.currentFrame++; p.standingPins = FULL(); frameDone = true; }
+    else p.standingPins = leftAfter;
+  } else {
+    const r = frame.rolls, n = r.length;
+    const bonus = n >= 2 && (r[0].pins === 10 || r[0].pins + r[1].pins === 10);
+    if (n === 1 || (n === 2 && bonus)) p.standingPins = nextFresh ? FULL() : leftAfter;
+    else { p.isFinished = true; frameDone = true; }
+  }
+
+  const strike = fresh && count === 10;
+  const spare = !fresh && !opts.foul && count > 0 && count === before.length;
+  let streak = 0;
+  if (strike) {
+    const all = [];
+    p.frames.forEach(f => { let fr = true; f.rolls.forEach(r => { all.push(fr && r.pins === 10); fr = fr ? r.pins === 10 : true; }); });
+    for (let i = all.length - 1; i >= 0 && all[i]; i--) streak++;
+  }
+  const info = {
+    strike, spare, streak, splitConverted: spare && prev && prev.isSplit,
+    playerFinished: p.isFinished, playerScore: p.isFinished ? lastScore(p.frames) : 0, playerName: p.name
+  };
+  if (frameDone && gameState.players.length > 1) rotatePlayer();
+  return info;
+}
+
+function pushUndo() {
+  undoStack.push(clone(gameState));
+  if (undoStack.length > 60) undoStack.shift();
+}
+function commitRoll(opts = {}) {
+  if (allFinished()) return;
+  if (activePlayer().isFinished) rotatePlayer();
+  pushUndo();
+  const info = applyRoll(gameState.selectedPins, opts);
+  gameState.selectedPins = [];
+  saveCurrent();
+  renderAll();
+  if (info) feedback(info);
+}
+function undo() {
+  if (!undoStack.length) return;
+  gameState = undoStack.pop();
+  saveCurrent(); renderAll();
+  toast('Cofnięto ostatni ruch');
+}
+
+async function jumpToFrame(i) {
+  const pIdx = gameState.active, n = gameState.players.length;
+  let j = -1;
+  for (let k = undoStack.length - 1; k >= 0; k--) {
+    const s = undoStack[k], sp = s.players[pIdx];
+    if (s.active === pIdx && s.players.length === n && sp && sp.currentFrame === i && sp.frames[i].rolls.length === 0) { j = k; break; }
+  }
+  if (j < 0) { toast('Brak historii dla tej ramki — użyj „Cofnij”'); return; }
+  const cnt = undoStack.length - j;
+  const ok = await askConfirm({
+    title: `Wrócić do ramki ${i + 1}?`,
+    message: `Cofnę ${cnt} ${plural(cnt, 'rzut', 'rzuty', 'rzutów')} od początku ramki ${i + 1}${n > 1 ? ' (u wszystkich graczy)' : ''}. Potem wpiszesz je ponownie.`,
+    ok: 'Wróć do ramki'
+  });
+  if (!ok) return;
+  gameState = undoStack[j];
+  undoStack = undoStack.slice(0, j);
+  saveCurrent(); renderAll();
+}
+
+async function newGame() {
+  if (gameState.editingGameId) return cancelEdit();
+  if (hasAnyRolls()) {
+    const ok = await askConfirm({
+      title: 'Rozpocząć nową grę?',
+      message: allFinished()
+        ? 'Ta gra jest zakończona, ale NIE została zapisana. Jeśli zaczniesz nową, nie trafi do statystyk (możesz jeszcze kliknąć Cofnij).'
+        : 'Bieżąca gra nie jest skończona. Zostanie porzucona (możesz kliknąć Cofnij, żeby ją przywrócić).',
+      ok: 'Nowa gra', danger: true
+    });
+    if (!ok) return;
+    pushUndo();
+  }
+  gameState = newGameState(gameState);
+  saveCurrent(); renderAll();
+  toast('Nowa gra — powodzenia! 🎳');
+}
+
+function saveCompletedGame() {
+  if (!allFinished()) return;
+  const sess = getActiveSession();
+  const title = (gameState.gameTitle || '').trim();
+  if (gameState.editingGameId) {
+    const g = savedGames.find(x => x.id === gameState.editingGameId);
+    const p = gameState.players[0];
+    if (g) {
+      g.frames = clone(p.frames);
+      g.score = lastScore(p.frames);
+      g.meta = clone(p.meta);
+      g.gameTitle = title || g.gameTitle;
+      g.lane = gameState.lane || '';
+      g.editedAt = Date.now();
+      saveGames();
+      toast(`Zapisano zmiany: ${g.gameTitle} — ${g.score} pkt`);
+    } else toast('Ta gra została w międzyczasie usunięta');
+    finishEdit();
+    return;
+  }
+  if (!sess) { toast('Brak aktywnego dnia — rozpocznij nowy'); renderAll(); return; }
+  const defTitle = `Gra ${ownerGamesInSession(sess.id) + 1}`;
+  const time = new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+  const groupId = 'grp_' + Date.now();
+  gameState.players.forEach((p, idx) => {
+    savedGames.push({
+      id: `game_${Date.now()}_${idx}`, groupId, sessionId: sess.id, season: sess.season, dateIso: sess.dateIso,
+      dateDisplay: `${fmtDate(sess.dateIso)} (${time})`, gameTitle: title || defTitle, score: lastScore(p.frames),
+      frames: clone(p.frames), meta: clone(p.meta), lane: gameState.lane || '',
+      playerName: idx === 0 ? null : p.name, isOwner: idx === 0, savedAt: Date.now(), editedAt: 0
+    });
+  });
+  saveGames();
+  const s0 = lastScore(gameState.players[0].frames);
+  undoStack = [];
+  gameState = newGameState(gameState);
+  saveCurrent(); renderAll(); refreshBackupDot();
+  toast(`Zapisano „${title || defTitle}”: ${s0} pkt`);
+}
+
+/* --- gracze --- */
+async function addPlayer() {
+  if (gameState.editingGameId) return;
+  const name = await askText({ title: 'Dodaj gracza', message: 'Gracze rzucają na zmianę po każdej ramce. Twoje statystyki liczą się tylko dla gracza 1.', placeholder: 'Imię gracza', ok: 'Dodaj' });
+  if (!name || !name.trim()) return;
+  pushUndo();
+  const wasDone = allFinished();
+  gameState.players.push(newPlayer(name.trim().slice(0, 24), null));
+  if (wasDone) gameState.active = gameState.players.length - 1;
+  saveCurrent(); renderAll();
+  toast(`Dodano gracza: ${name.trim()}`);
+}
+async function removePlayer(idx) {
+  const p = gameState.players[idx];
+  if (!p || idx === 0) return;
+  const ok = await askConfirm({ title: `Usunąć gracza ${p.name}?`, message: 'Jego rzuty z tej gry przepadną (możesz cofnąć).', ok: 'Usuń', danger: true });
+  if (!ok) return;
+  pushUndo();
+  gameState.players.splice(idx, 1);
+  if (gameState.active === idx) { gameState.active = idx - 1; rotatePlayer(); if (gameState.players[gameState.active].isFinished) gameState.active = 0; }
+  else if (gameState.active > idx) gameState.active--;
+  gameState.selectedPins = [];
+  saveCurrent(); renderAll();
+}
+function selectPlayer(idx) {
+  const p = gameState.players[idx];
+  if (!p || idx === gameState.active) return;
+  if (p.isFinished) { toast(`${p.name} zakończył(a) już grę: ${lastScore(p.frames)} pkt`); return; }
+  gameState.active = idx;
+  gameState.selectedPins = [];
+  saveCurrent(); renderAll();
+}
+
+/* --- edycja zapisanej gry --- */
+async function editGame(id) {
+  const g = savedGames.find(x => x.id === id);
+  if (!g) return;
+  closeModal('game-modal');
+  if (gameState.editingGameId && gameState.editingGameId !== id) {
+    if (!await askConfirm({ title: 'Porzucić bieżącą edycję?', message: 'Niezapisane poprawki poprzednio edytowanej gry przepadną.', ok: 'Tak, edytuj tę', danger: true })) return;
+  }
+  if (!gameState.editingGameId) { parked = { state: gameState, undo: undoStack }; saveParked(); }
+  gameState = { gameTitle: g.gameTitle || '', lane: g.lane || '', players: [newPlayer(displayName(g), g.meta)], active: 0, selectedPins: [], editingGameId: id };
+  undoStack = [];
+  // Odtwarzamy grę rzut po rzucie — dzięki temu można cofnąć/przeskoczyć do dowolnej ramki
+  g.frames.forEach(f => f.rolls.forEach(r => {
+    if (allFinished()) return;
+    pushUndo();
+    const p = activePlayer();
+    if (r.foul) applyRoll([], { foul: true });
+    else if (r.knocked) applyRoll(r.knocked);
+    else if (r.remainingAfter) applyRoll(p.standingPins.filter(x => !r.remainingAfter.includes(x)));
+    else applyRoll([], { quickCount: r.pins });
+  }));
+  saveCurrent();
+  switchTab('tor');
+  toast('Tryb edycji: dotknij ramki, którą chcesz poprawić');
+}
+function finishEdit() {
+  if (parked) {
+    gameState = normalizeCurrent(parked.state) || newGameState(null);
+    undoStack = (parked.undo || []).map(normalizeCurrent).filter(Boolean);
+    parked = null;
+  } else { gameState = newGameState(null); undoStack = []; }
+  gameState.editingGameId = null;
+  saveParked(); saveCurrent(); renderAll();
+}
+async function cancelEdit() {
+  if (!await askConfirm({ title: 'Anulować edycję?', message: 'Zmiany w tej grze nie zostaną zapisane. Wrócisz do swojej bieżącej gry.', ok: 'Anuluj edycję', danger: true })) return;
+  finishEdit();
+  toast('Anulowano edycję');
+}
+
+/* =====================================================================
+   EFEKTY: WIBRACJE, ANIMACJE, KONFETTI
+   ===================================================================== */
+function vibrate(pattern) {
+  if (!settings.vibrate || !navigator.vibrate) return;
+  try { navigator.vibrate(pattern); } catch (e) {}
+}
+function feedback(info) {
+  vibrate(info.strike ? [35, 50, 80] : info.spare ? [30, 40, 30] : 14);
+  if (!settings.animations) return;
+  if (info.strike) {
+    const words = { 1: 'STRIKE!', 2: 'DOUBLE!', 3: 'TURKEY! 🦃' };
+    celebrate(words[info.streak] || `${info.streak}-BAGGER!`, info.streak >= 3 ? 'gold' : '', info.streak >= 3);
+  } else if (info.splitConverted) celebrate('SPLIT DOBITY!', 'green', true);
+  else if (info.spare) celebrate('SPARE!', 'green');
+  if (info.playerFinished && info.playerScore >= 200) {
+    setTimeout(() => {
+      celebrate(info.playerScore === 300 ? 'PERFECT 300!' : `${info.playerScore}! 🔥`, 'gold', true);
+      vibrate([60, 60, 60, 60, 140]);
+    }, (info.strike || info.spare) ? 950 : 0);
+  }
+}
+function celebrate(word, cls = '', withConfetti = false) {
+  const el = $('celebrate');
+  el.innerHTML = `<div class="word ${cls}">${esc(word)}</div>`;
+  clearTimeout(celebrate._t);
+  celebrate._t = setTimeout(() => { el.innerHTML = ''; }, 1250);
+  if (withConfetti) confetti();
+}
+function confetti() {
+  const colors = ['#3b82f6', '#60a5fa', '#10b981', '#f59e0b', '#ef4444', '#fafafa', '#a855f7'];
+  for (let i = 0; i < 70; i++) {
+    const d = document.createElement('div');
+    d.className = 'confetti';
+    const dur = 1.6 + Math.random() * 1.4;
+    d.style.left = (Math.random() * 100) + 'vw';
+    d.style.background = colors[i % colors.length];
+    d.style.setProperty('--dx', (Math.random() * 160 - 80) + 'px');
+    d.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+    d.style.animationDuration = dur + 's';
+    d.style.animationDelay = (Math.random() * .3) + 's';
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), (dur + .5) * 1000);
+  }
+}
+
+/* =====================================================================
+   EKRAN NIE GAŚNIE (Wake Lock)
+   ===================================================================== */
+let wakeLock = null;
+async function updateWakeLock() {
+  const want = settings.wakeLock && document.visibilityState === 'visible';
+  if (!('wakeLock' in navigator)) return;
+  if (want && !wakeLock) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (e) { wakeLock = null; }
+  } else if (!want && wakeLock) {
+    try { await wakeLock.release(); } catch (e) {}
+    wakeLock = null;
+  }
+}
+
+/* =====================================================================
+   OKNA (modale) — zamykanie tłem, klawiszem Esc i gestem „wstecz”
+   ===================================================================== */
+const modalStack = [];
+const modalOnClose = {};
+let guardPushed = false;
+function openModal(id) {
+  if (modalStack.includes(id)) return;
+  $(id).classList.add('open');
+  modalStack.push(id);
+  if (!guardPushed) { try { history.pushState({ bpGuard: 1 }, ''); guardPushed = true; } catch (e) {} }
+}
+function closeModal(id) {
+  id = id || modalStack[modalStack.length - 1];
+  const i = modalStack.indexOf(id);
+  if (i < 0) return;
+  modalStack.splice(i, 1);
+  $(id).classList.remove('open');
+  const cb = modalOnClose[id];
+  if (cb) { delete modalOnClose[id]; cb(); }
+}
+window.addEventListener('popstate', () => {
+  guardPushed = false;
+  if (modalStack.length) {
+    closeModal();
+    if (modalStack.length) { try { history.pushState({ bpGuard: 1 }, ''); guardPushed = true; } catch (e) {} }
+  }
+});
+function askChoice({ title, message = '', buttons, input = null }) {
+  return new Promise(res => {
+    $('dlg-title').textContent = title;
+    $('dlg-msg').textContent = message;
+    $('dlg-msg').hidden = !message;
+    const wrap = $('dlg-input-wrap'), inp = $('dlg-input');
+    wrap.hidden = !input;
+    let val = null;
+    const box = $('dlg-btns');
+    box.innerHTML = '';
+    buttons.forEach(b => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'btn ' + (b.cls || '');
+      el.textContent = b.label;
+      el.onclick = () => { val = (input && b.value === true) ? inp.value : b.value; closeModal('dlg'); };
+      box.appendChild(el);
+    });
+    if (input) {
+      inp.value = input.value || '';
+      inp.placeholder = input.placeholder || '';
+      inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); val = inp.value; closeModal('dlg'); } };
+    }
+    modalOnClose['dlg'] = () => res(val);
+    openModal('dlg');
+    if (input) setTimeout(() => inp.focus(), 60);
+  });
+}
+function askConfirm({ title, message, ok = 'OK', danger = false }) {
+  return askChoice({ title, message, buttons: [{ label: 'Anuluj', value: false }, { label: ok, value: true, cls: danger ? 'btn-danger' : 'btn-primary' }] })
+    .then(v => v === true);
+}
+function askText({ title, message, placeholder, ok = 'OK', value = '' }) {
+  return askChoice({ title, message, input: { placeholder, value }, buttons: [{ label: 'Anuluj', value: null }, { label: ok, value: true, cls: 'btn-primary' }] });
+}
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  t.style.animation = 'none'; void t.offsetWidth; t.style.animation = '';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+/* =====================================================================
+   RENDEROWANIE: TOR
+   ===================================================================== */
+function setVal(id, v) { const el = $(id); if (document.activeElement !== el) el.value = v; }
+
+function rollMarks(rolls) {
+  const out = [];
+  let fresh = true, prev = null;
+  rolls.forEach(r => {
+    let t, cls = '';
+    if (r.foul) { t = 'F'; cls = 'f'; }
+    else if (fresh && r.pins === 10) { t = 'X'; cls = 'x'; }
+    else if (!fresh && prev && prev.pins + r.pins === 10) { t = '/'; cls = 'sp'; }
+    else { t = r.pins === 0 ? '-' : String(r.pins); if (fresh && r.isSplit) cls = 'split'; }
+    out.push({ t, cls });
+    prev = r;
+    fresh = fresh ? r.pins === 10 : true;
+  });
+  return out;
+}
+
+function renderScoreboard(el, frames, o = {}) {
+  const scores = calculateFrameScores(frames);
+  const maxP = o.showMax ? calculateMaxPossibleScore(frames) : 0;
+  let html = '';
+  for (let i = 0; i < 10; i++) {
+    const tenth = i === 9, rolls = frames[i].rolls, marks = rollMarks(rolls);
+    const active = i === o.activeFrame;
+    const slots = tenth ? 3 : 2;
+    let cellMarks = [];
+    for (let r = 0; r < slots; r++) cellMarks.push(marks[r] || null);
+    // W ramkach 1–9 strike pokazujemy w prawym okienku (jak na prawdziwej tablicy)
+    if (!tenth && marks[0] && marks[0].cls === 'x') cellMarks = [null, marks[0]];
+    const curIdx = active ? (!tenth && rolls.length === 0 ? 0 : rolls.length) : -1;
+    let cells = '';
+    cellMarks.forEach((m, r) => {
+      const cur = r === curIdx;
+      const inner = m ? (m.cls === 'split' ? `<span>${m.t}</span>` : m.t) : '';
+      cells += `<div class="rl ${m ? m.cls : ''} ${cur ? 'cur' : ''}">${inner}</div>`;
+    });
+    let tot = '', tcls = '';
+    if (scores[i] !== null) tot = scores[i];
+    else if (tenth && o.showMax) { tot = `(${maxP})`; tcls = 'max'; }
+    const clk = o.clickable && rolls.length > 0;
+    html += `<div class="fr ${active ? 'active' : ''} ${clk ? 'click' : ''}" ${clk ? `data-action="jump-frame" data-frame="${i}"` : ''}>
+      <div class="fr-h">${i + 1}</div><div class="fr-r">${cells}</div><div class="fr-t ${tcls}">${tot}</div></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function buildDeck() {
+  $('pin-deck').innerHTML = DECK_ROWS.map(row => `<div class="deck-row">${row.map(n =>
+    `<button type="button" class="pin" data-pin="${n}" aria-label="Kręgiel ${n}"><span class="pin-in"><span class="pin-num">${n}</span></span></button>`
+  ).join('')}</div>`).join('');
+}
+function renderPinDeck() {
+  const p = activePlayer();
+  document.querySelectorAll('#pin-deck .pin').forEach(btn => {
+    const n = +btn.dataset.pin;
+    btn.classList.toggle('dead', !p.standingPins.includes(n));
+    btn.classList.toggle('knocked', p.standingPins.includes(n) && gameState.selectedPins.includes(n));
+  });
+}
+function renderPad() {
+  const p = activePlayer();
+  const st = p.standingPins.length;
+  const fresh = rollIsFresh(p.frames[p.currentFrame].rolls);
+  let h = '';
+  for (let n = 0; n <= 10; n++) {
+    const label = n === st ? (fresh ? 'X' : '/') : (n === 0 ? '–' : n);
+    h += `<button type="button" class="btn ${n === st ? 'btn-primary' : ''}" data-action="quick" data-n="${n}" ${n > st ? 'disabled' : ''}>${label}</button>`;
+  }
+  h += `<button type="button" class="btn btn-foul" data-action="foul">F</button>`;
+  $('pad').innerHTML = h;
+  $('pad-info').textContent = `Stoi: ${st} ${plural(st, 'kręgiel', 'kręgle', 'kręgli')}`;
+}
+function updateActionButtons() {
+  const p = activePlayer();
+  const fresh = rollIsFresh(p.frames[p.currentFrame].rolls);
+  $('btn-strike').textContent = fresh ? 'Strike' : 'Spare';
+  const n = gameState.selectedPins.length;
+  $('btn-next').textContent = n === 0 ? 'Next (0)' : `Next (${n})`;
+}
+function renderPlayers() {
+  const multi = gameState.players.length > 1;
+  const editing = !!gameState.editingGameId;
+  if (!multi && editing) { $('players').innerHTML = ''; $('players').hidden = true; return; }
+  $('players').hidden = false;
+  let h = '';
+  if (multi) {
+    h = gameState.players.map((pl, i) =>
+      `<button type="button" class="chip ${i === gameState.active ? 'on' : ''} ${pl.isFinished ? 'done' : ''}" data-action="select-player" data-idx="${i}">
+        <span>${esc(pl.name)}${pl.isFinished ? ' ✓' : ''}</span><b>${lastScore(pl.frames)}</b>
+        ${i > 0 && !editing ? `<span class="x" data-action="remove-player" data-idx="${i}" aria-label="Usuń gracza">×</span>` : ''}
+      </button>`).join('');
+  }
+  if (!editing) h += `<button type="button" class="chip add" data-action="add-player">+ ${multi ? 'Gracz' : 'Dodaj gracza'}</button>`;
+  $('players').innerHTML = h;
+}
+function renderFinished() {
+  const sess = getActiveSession();
+  const editing = !!gameState.editingGameId;
+  const p0 = gameState.players[0];
+  const s0 = lastScore(p0.frames);
+  $('fin-badge').textContent = editing || !sess ? 'Edycja zapisanej gry' : `${sess.title} • ${fmtDate(sess.dateIso)}`;
+  $('fin-score').textContent = `${s0} pkt`;
+  const a = analyzeFrames(p0.frames);
+  const fb = a.firstBalls ? (a.firstBallPins / a.firstBalls).toFixed(1) : '0';
+  $('fin-summary').textContent = `${p0.name}: X ${a.strikes} • / ${a.spares} • otwarte ${a.openFrames} • 1. rzut śr. ${fb}`;
+  if (gameState.players.length > 1) {
+    const scores = gameState.players.map(p => lastScore(p.frames));
+    const best = Math.max(...scores);
+    $('fin-players').innerHTML = gameState.players.map((p, i) =>
+      `<div class="fin-pl ${scores[i] === best ? 'win' : ''}"><span>${scores[i] === best ? '🏆 ' : ''}${esc(p.name)}</span><span>${scores[i]}</span></div>`).join('');
+  } else $('fin-players').innerHTML = '';
+  const n = sess ? ownerGamesInSession(sess.id) : 0;
+  setVal('fin-title', gameState.gameTitle || '');
+  $('fin-title').placeholder = `Gra ${n + 1}`;
+  $('fin-save').textContent = editing ? 'Zapisz zmiany' : (gameState.players.length > 1 ? 'Zapisz wszystkich' : 'Zapisz grę');
+}
+function populateBallSelect() {
+  const sel = $('eq-ball');
+  if (document.activeElement === sel) return;
+  const m = activePlayer().meta;
+  sel.innerHTML = '<option value="">Brak / Własna</option>' +
+    arsenal.map(b => `<option value="${esc(b.id)}">${esc(b.name)} (${esc(b.weight)})</option>`).join('');
+  sel.value = arsenal.some(b => b.id === m.ballId) ? m.ballId : '';
+}
+function renderLineHistory() {
+  const lh = activePlayer().meta.lineHistory || [];
+  $('line-history').innerHTML = lh.length > 1
+    ? 'Zmiany linii: ' + lh.map(l => `<b class="tx2">R${l.frame}: ${l.start}→${l.target}</b>`).join(' · ')
+    : 'Zmieniasz linię w trakcie gry? Wpisz nowe deski — zapiszę, od której ramki.';
+}
+function syncEquip() {
+  const p = activePlayer(), m = p.meta;
+  populateBallSelect();
+  setVal('eq-surface', m.surface || '');
+  setVal('eq-oil', m.oilPattern || '');
+  setVal('eq-start', m.startBoard ?? '');
+  setVal('eq-target', m.targetBoard ?? '');
+  $('eq-owner').textContent = gameState.players.length > 1 ? `• ${p.name}` : '';
+  $('equip-body').hidden = !!settings.equipCollapsed;
+  $('btn-equip').textContent = settings.equipCollapsed ? 'Rozwiń' : 'Zwiń';
+  renderLineHistory();
+  refreshOilDatalist();
+  renderOilHint();
+}
+
+const APP_VERSION = 'v3.2';
+const IS_HOSTED = location.protocol === 'http:' || location.protocol === 'https:';
+
+function renderAll() {
+  $('migrate-banner').hidden = !(IS_HOSTED && !savedGames.length && !settings.migrateDismissed);
+  const sess = getActiveSession();
+  const p = activePlayer();
+  const done = allFinished();
+  const editing = !!gameState.editingGameId;
+
+  // Brak aktywnego dnia (zakończony) — pokazujemy ekran startu nowego dnia
+  const noSess = !sess && !editing;
+  $('no-session').hidden = !noSess;
+  $('game-area').hidden = noSess;
+  $('tor-toolbar').hidden = noSess;
+  $('sess-card').hidden = noSess;
+  $('sess-row').hidden = !sess;
+  if (noSess) { renderNoSession(); return; }
+
+  const nOwner = sess ? ownerGamesInSession(sess.id) : 0;
+  if (sess) {
+    $('sess-date').textContent = fmtDate(sess.dateIso);
+    setVal('sess-title', sess.title);
+    $('sess-season').textContent = sess.season.replace(/^Sezon\s*/, '').replace(/20(\d\d)\/20(\d\d)/, '$1/$2');
+  }
+  setVal('game-title', gameState.gameTitle || '');
+  $('game-title').placeholder = `Tytuł gry (np. Gra ${nOwner + 1})`;
+  setVal('game-lane', gameState.lane || '');
+  $('game-counter').textContent = editing ? 'Edycja' : `Gra #${nOwner + 1}`;
+  $('btn-undo').disabled = !undoStack.length;
+  $('btn-quick').classList.toggle('on', !!settings.quickEntry);
+
+  const eb = $('edit-banner');
+  if (editing) {
+    const g = savedGames.find(x => x.id === gameState.editingGameId);
+    $('edit-banner-text').textContent = `✏️ Edytujesz: ${g ? g.gameTitle + ' (' + fmtDate(g.dateIso) + ')' : 'zapisaną grę'} — dotknij ramki, by ją poprawić.`;
+    eb.hidden = false;
+  } else eb.hidden = true;
+
+  renderPlayers();
+  renderScoreboard($('board'), p.frames, { activeFrame: p.isFinished ? -1 : p.currentFrame, showMax: !p.isFinished, clickable: true });
+
+  const multi = gameState.players.length > 1;
+  $('status').textContent = done ? 'Gra zakończona'
+    : `${multi ? p.name + ' • ' : ''}Ramka ${p.currentFrame + 1} • Rzut ${p.frames[p.currentFrame].rolls.length + 1}`;
+  $('max-badge').textContent = calculateMaxPossibleScore(p.frames);
+
+  $('deck-wrap').hidden = done || settings.quickEntry;
+  $('pad-wrap').hidden = done || !settings.quickEntry;
+  $('actions').hidden = done || settings.quickEntry;
+  $('finished').hidden = !done;
+  if (done) renderFinished();
+  else { if (settings.quickEntry) renderPad(); else renderPinDeck(); updateActionButtons(); }
+  syncEquip();
+}
+
+/* --- dotyk i przeciąganie palcem po kręglach --- */
+function setupPinGestures() {
+  const deck = $('pin-deck');
+  let down = false, mode = null;
+  const visited = new Set();
+  function touchPin(n, force) {
+    if (allFinished()) return null;
+    const p = activePlayer();
+    if (!p.standingPins.includes(n)) return null;
+    const sel = gameState.selectedPins.includes(n);
+    const m = force || (sel ? 'stand' : 'knock');
+    if (m === 'knock' && !sel) { gameState.selectedPins.push(n); vibrate(8); }
+    else if (m === 'stand' && sel) { gameState.selectedPins = gameState.selectedPins.filter(x => x !== n); vibrate(5); }
+    renderPinDeck(); updateActionButtons();
+    return m;
+  }
+  deck.addEventListener('pointerdown', e => {
+    const btn = e.target.closest('.pin');
+    if (!btn) return;
+    e.preventDefault();
+    down = true; visited.clear();
+    const n = +btn.dataset.pin;
+    visited.add(n);
+    mode = touchPin(n);
+  });
+  window.addEventListener('pointermove', e => {
+    if (!down) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const btn = el ? el.closest('.pin') : null;
+    if (!btn) return;
+    const n = +btn.dataset.pin;
+    if (!visited.has(n)) { visited.add(n); touchPin(n, mode); }
+  });
+  const end = () => { down = false; visited.clear(); mode = null; };
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', end);
+}
+
+/* --- sprzęt i linia --- */
+function onBallChange() {
+  const m = activePlayer().meta;
+  const b = arsenal.find(x => x.id === $('eq-ball').value);
+  m.ballId = b ? b.id : '';
+  m.ballName = b ? b.name : 'Brak / Własna';
+  if (b) { m.surface = b.surface || ''; $('eq-surface').value = m.surface; }
+  saveCurrent();
+}
+function onEquipText() {
+  const m = activePlayer().meta;
+  m.surface = $('eq-surface').value.trim();
+  m.oilPattern = $('eq-oil').value.trim();
+  saveCurrent();
+}
+function clampBoard(v) { const n = parseInt(v, 10); return Number.isInteger(n) && n >= 1 && n <= 39 ? n : null; }
+function onLineChange() {
+  const p = activePlayer(), m = p.meta;
+  const s = clampBoard($('eq-start').value), t = clampBoard($('eq-target').value);
+  if (s === null || t === null) { toast('Numer deski: od 1 do 39'); $('eq-start').value = m.startBoard; $('eq-target').value = m.targetBoard; return; }
+  if (s === m.startBoard && t === m.targetBoard) return;
+  const rolled = p.frames.some(f => f.rolls.length);
+  if (rolled && !p.isFinished) {
+    if (!Array.isArray(m.lineHistory)) m.lineHistory = [];
+    if (!m.lineHistory.length) m.lineHistory.push({ frame: 1, start: m.startBoard, target: m.targetBoard });
+    const fr = p.currentFrame + 1;
+    const last = m.lineHistory[m.lineHistory.length - 1];
+    if (last.frame === fr) { last.start = s; last.target = t; }
+    else m.lineHistory.push({ frame: fr, start: s, target: t });
+    toast(`Nowa linia od ramki ${fr}: ${s} → ${t}`);
+  } else if (!rolled) m.lineHistory = [];
+  m.startBoard = s; m.targetBoard = t;
+  saveCurrent(); renderLineHistory();
+}
+
+/* =====================================================================
+   BAZA SMAROWAŃ — czy już grałem na tym oleju? jakimi kulami i liniami?
+   ===================================================================== */
+const OIL_PRESETS = ['House Shot (THS)', 'Sport - Cheetah (35ft)', 'Sport - Viper (36ft)', 'Sport - Chameleon (39ft)', 'Sport - Scorpion (42ft)', 'Sport - Shark (45ft)'];
+const oilCombos = { hint: [], modal: [] };
+
+function normOil(s) {
+  return String(s || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim();
+}
+/* Grupuje Twoje zapisane gry wg smarowania (wielkość liter, polskie znaki i myślniki nie mają znaczenia) */
+function oilIndex() {
+  const idx = {};
+  savedGames.filter(g => g.isOwner).forEach(g => {
+    const name = String((g.meta && g.meta.oilPattern) || '').trim();
+    const k = normOil(name);
+    if (!k) return;
+    const e = idx[k] || (idx[k] = { key: k, name, games: [], last: '' });
+    e.games.push(g);
+    if (g.dateIso >= e.last) { e.last = g.dateIso; e.name = name; }
+  });
+  return Object.values(idx).sort((a, b) => b.last.localeCompare(a.last));
+}
+function findOil(q) {
+  const k = normOil(q);
+  if (!k) return { exact: null, partial: [] };
+  const all = oilIndex();
+  const exact = all.find(e => e.key === k) || null;
+  const words = k.split(' ');
+  const partial = all.filter(e => e !== exact && words.every(w => e.key.includes(w)));
+  return { exact, partial };
+}
+function oilStats(entry) {
+  const gs = entry.games;
+  const combos = {};
+  gs.forEach(g => {
+    const m = g.meta || {};
+    const k = [normOil(m.ballName), normOil(m.surface), m.startBoard, m.targetBoard].join('|');
+    const c = combos[k] || (combos[k] = { ballName: m.ballName || 'Brak / Własna', ballId: m.ballId || '', surface: m.surface || '', start: m.startBoard, target: m.targetBoard, n: 0, sum: 0, best: 0, last: '' });
+    c.n++; c.sum += g.score; c.best = Math.max(c.best, g.score);
+    if (g.dateIso >= c.last) c.last = g.dateIso;
+  });
+  const bySess = {};
+  gs.forEach(g => {
+    const s = bySess[g.sessionId] || (bySess[g.sessionId] = { id: g.sessionId, date: g.dateIso, n: 0, sum: 0, high: 0 });
+    s.n++; s.sum += g.score; s.high = Math.max(s.high, g.score);
+  });
+  const total = gs.reduce((a, g) => a + g.score, 0);
+  return {
+    n: gs.length, days: Object.keys(bySess).length, last: entry.last,
+    avg: gs.length ? total / gs.length : 0, high: gs.length ? Math.max(...gs.map(g => g.score)) : 0,
+    lineChanged: gs.filter(g => g.meta && Array.isArray(g.meta.lineHistory) && g.meta.lineHistory.length > 1).length,
+    combos: Object.values(combos).map(c => ({ ...c, avg: c.sum / c.n })).sort((a, b) => b.avg - a.avg || b.n - a.n),
+    sessions: Object.values(bySess).map(s => {
+      const ss = sessions.find(x => x.id === s.id);
+      return { ...s, title: ss ? ss.title : 'Usunięta sesja', avg: s.sum / s.n };
+    }).sort((a, b) => b.date.localeCompare(a.date))
+  };
+}
+function comboBall(c) { return arsenal.find(b => b.id === c.ballId) || arsenal.find(b => normOil(b.name) === normOil(c.ballName)) || null; }
+function comboHTML(c, i, src, isBest) {
+  const ball = comboBall(c);
+  return `<button type="button" class="combo ${isBest ? 'best' : ''}" data-action="oil-apply" data-src="${src}" data-idx="${i}">
+    <span class="ball-dot" style="background:${ball ? validColor(ball.color) : '#52525b'}"></span>
+    <span class="grow"><b>${esc(c.ballName)}</b>${c.surface ? ` <small>(${esc(c.surface)})</small>` : ''}<br>
+      <small>Linia <b class="tx2">${c.start ?? '–'} → ${c.target ?? '–'}</b> • ${gamesWord(c.n)} • śr. <b class="okc">${c.avg.toFixed(1)}</b> • best ${c.best}${isBest ? ' • 🏆' : ''}</small></span>
+    <span class="use">Użyj</span></button>`;
+}
+function oilReportHTML(entry, src) {
+  const st = oilStats(entry);
+  oilCombos[src] = st.combos.map(c => ({ ...c, oil: entry.name }));
+  return `<div>
+      <b style="font-size:16px">${esc(entry.name)}</b>
+      <div class="xs muted mt4">${gamesWord(st.n)} • ${st.days} ${plural(st.days, 'dzień', 'dni', 'dni')} • ostatnio ${fmtDate(st.last)}</div>
+    </div>
+    <div class="g2">
+      <div class="mini"><div class="k">Średnia</div><div class="v okc">${st.avg.toFixed(1)}</div></div>
+      <div class="mini"><div class="k">Najwyższa</div><div class="v acc">${st.high}</div></div>
+    </div>
+    <div class="sec-title" style="margin:4px 0 0">Kule i linie — od najlepszej</div>
+    ${st.combos.map((c, i) => comboHTML(c, i, src, i === 0 && st.combos.length > 1)).join('')}
+    ${st.lineChanged ? `<div class="xs dim">W ${st.lineChanged} ${st.lineChanged === 1 ? 'grze' : 'grach'} zmieniałeś linię w trakcie — pokazana jest linia końcowa.</div>` : ''}
+    <div class="sec-title" style="margin:6px 0 0">Dni na tym smarowaniu</div>
+    ${st.sessions.map(s => `<button type="button" class="combo" data-action="session-stats" data-id="${esc(s.id)}">
+      <span class="grow"><b>${fmtDate(s.date)}</b> — ${esc(s.title)}<br><small>${gamesWord(s.n)} • śr. ${s.avg.toFixed(1)} • high ${s.high}</small></span>
+      <span class="acc strong">›</span></button>`).join('')}`;
+}
+function oilListHTML(list, action) {
+  return list.map(e => {
+    const avg = e.games.reduce((a, g) => a + g.score, 0) / e.games.length;
+    const days = new Set(e.games.map(g => g.sessionId)).size;
+    return `<button type="button" class="combo" data-action="${action}" data-q="${esc(e.name)}">
+      <span class="grow"><b>${esc(e.name)}</b><br><small>${gamesWord(e.games.length)} • ${days} ${plural(days, 'dzień', 'dni', 'dni')} • ostatnio ${fmtDate(e.last)} • śr. <b class="okc">${avg.toFixed(1)}</b></small></span>
+      <span class="acc strong">›</span></button>`;
+  }).join('');
+}
+
+/* Podpowiedź pod polem „Smarowanie” na torze */
+function renderOilHint() {
+  const el = $('oil-hint');
+  const q = $('eq-oil').value;
+  if (!normOil(q)) { el.innerHTML = ''; return; }
+  const { exact, partial } = findOil(q);
+  if (exact) {
+    const st = oilStats(exact);
+    oilCombos.hint = st.combos.slice(0, 3).map(c => ({ ...c, oil: exact.name }));
+    el.innerHTML = `<div class="oil-hint">
+      <div class="row between"><b>📚 Grałeś już na tym smarowaniu</b>
+        <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 4px" data-action="oil-open" data-q="${esc(exact.name)}">Wszystko ›</button></div>
+      <div class="xs muted">${gamesWord(st.n)} • ${st.days} ${plural(st.days, 'dzień', 'dni', 'dni')} • ostatnio ${fmtDate(st.last)} • śr. <b class="okc">${st.avg.toFixed(1)}</b> • high ${st.high}</div>
+      ${oilCombos.hint.map((c, i) => comboHTML(c, i, 'hint', i === 0 && st.combos.length > 1)).join('')}
+      ${st.combos.length > 3 ? `<div class="xs dim">+ ${st.combos.length - 3} innych zestawów — „Wszystko”</div>` : ''}
+    </div>`;
+  } else {
+    el.innerHTML = `<div class="oil-hint new"><b>🆕 Nowe smarowanie</b> — nie masz jeszcze zapisanych gier na „${esc(q.trim())}”.
+      ${partial.length ? `<br>Podobne: ${partial.slice(0, 4).map(e => `<button type="button" class="link-chip" data-action="oil-pick" data-q="${esc(e.name)}">${esc(e.name)} (${e.games.length})</button>`).join('')}` : ''}</div>`;
+  }
+}
+function refreshOilDatalist() {
+  const seen = new Set(), opts = [];
+  [...oilIndex().map(e => e.name), ...OIL_PRESETS].forEach(n => { const k = normOil(n); if (k && !seen.has(k)) { seen.add(k); opts.push(n); } });
+  const html = opts.map(n => `<option value="${esc(n)}">`).join('');
+  const dl = $('oil-presets');
+  if (dl.innerHTML !== html) dl.innerHTML = html;
+}
+
+/* Okno „Baza smarowań” */
+function openOilModal(q) {
+  $('oil-q').value = q || '';
+  renderOilModal();
+  openModal('oil-modal');
+}
+function renderOilModal() {
+  const q = $('oil-q').value;
+  const box = $('oil-results');
+  const all = oilIndex();
+  if (!all.length) { box.innerHTML = '<div class="empty">Nie masz jeszcze zapisanych gier z wpisanym smarowaniem. Wpisuj je na torze w polu „Smarowanie” — baza zbuduje się sama.</div>'; return; }
+  if (!normOil(q)) {
+    box.innerHTML = `<div class="sec-title" style="margin:0">Wszystkie smarowania (${all.length})</div>` + oilListHTML(all, 'oil-pick-modal');
+    return;
+  }
+  const { exact, partial } = findOil(q);
+  if (exact) {
+    box.innerHTML = oilReportHTML(exact, 'modal') + (partial.length ? `<div class="sec-title" style="margin:6px 0 0">Podobne</div>${oilListHTML(partial, 'oil-pick-modal')}` : '');
+  } else if (partial.length === 1) {
+    box.innerHTML = oilReportHTML(partial[0], 'modal');
+  } else if (partial.length) {
+    box.innerHTML = `<div class="sec-title" style="margin:0">Pasujące smarowania (${partial.length})</div>` + oilListHTML(partial, 'oil-pick-modal');
+  } else {
+    box.innerHTML = `<div class="empty">🆕 Nie grałeś jeszcze na „${esc(q.trim())}”.<br>Po zapisaniu pierwszej gry pojawi się tutaj.</div>`;
+  }
+}
+
+/* „Użyj” — ustawia olej, kulę i linię w bieżącej grze */
+function applyOilCombo(src, idx) {
+  const c = (oilCombos[src] || [])[idx];
+  if (!c) return;
+  const m = activePlayer().meta;
+  $('eq-oil').value = c.oil;
+  onEquipText();
+  const ball = comboBall(c);
+  if (ball) { $('eq-ball').value = ball.id; onBallChange(); }
+  else { m.ballId = ''; m.ballName = c.ballName; m.surface = c.surface; saveCurrent(); }
+  if (c.start && c.target) { $('eq-start').value = c.start; $('eq-target').value = c.target; onLineChange(); }
+  let msg = `Ustawiono: ${c.ballName} • linia ${c.start ?? '–'} → ${c.target ?? '–'}`;
+  if (ball && c.surface && ball.surface && normOil(ball.surface) !== normOil(c.surface)) msg += ` (wtedy powłoka ${c.surface}, teraz ${ball.surface})`;
+  if (!ball && c.ballName !== 'Brak / Własna') msg += ' — tej kuli nie ma już w torbie';
+  closeModal('oil-modal');
+  if (currentTab !== 'tor') switchTab('tor'); else renderAll();
+  toast(msg);
+}
+
+/* =====================================================================
+   ZAKŁADKA: SESJE
+   ===================================================================== */
+function createSession(e) {
+  e.preventDefault();
+  const title = $('ns-title').value.trim();
+  if (!title) return;
+  const ns = { id: 'sess_' + Date.now(), dateIso: $('ns-date').value || todayIso(), title, season: $('ns-season').value.trim() || currentSeason() };
+  sessions.push(ns);
+  activeSessionId = ns.id;
+  saveSessions(); saveActive();
+  $('ns-title').value = '';
+  toast(`Aktywna sesja: ${title}`);
+  switchTab('tor');
+}
+function selectSession(id) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  if (s.closed) { openSessionStats(id); return; }   // zakończony dzień → pokazujemy wyniki, nie aktywujemy
+  activeSessionId = id;
+  saveActive();
+  toast(`Przełączono na: ${getActiveSession().title}`);
+  switchTab('tor');
+}
+async function deleteSession(id) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  const n = savedGames.filter(g => g.sessionId === id).length;
+  const ok = await askConfirm({
+    title: `Usunąć „${s.title}”?`,
+    message: n ? `Razem z sesją usuniesz ${gamesWord(n)} z ${fmtDate(s.dateIso)}. Tego nie da się cofnąć.` : 'Ta sesja nie ma zapisanych gier.',
+    ok: 'Usuń', danger: true
+  });
+  if (!ok) return;
+  sessions = sessions.filter(x => x.id !== id);
+  savedGames = savedGames.filter(g => g.sessionId !== id);
+  saveSessions(); saveGames();
+  if (activeSessionId === id) { activeSessionId = ''; saveActive(); }
+  renderSessions();
+  toast('Usunięto sesję');
+}
+function renderSessions() {
+  const seasons = Array.from(new Set([currentSeason(), ...sessions.map(s => s.season)]));
+  $('season-presets').innerHTML = seasons.map(s => `<option value="${esc(s)}">`).join('');
+  $('sessions-count').textContent = `${sessions.length} ${plural(sessions.length, 'dzień', 'dni', 'dni')}`;
+  const sorted = [...sessions].sort((a, b) => b.dateIso.localeCompare(a.dateIso));
+  if (!sorted.length) { $('sessions-list').innerHTML = '<div class="empty">Brak dni. Utwórz pierwszy powyżej.</div>'; return; }
+  $('sessions-list').innerHTML = sorted.map(s => {
+    const sum = sessionSummary(s.id);
+    const cur = s.id === activeSessionId && !s.closed;
+    const id = esc(s.id);
+    let status = '', buttons = '';
+    if (cur) {
+      status = '<span class="badge badge-solid">Aktywna</span>';
+      buttons = `<button type="button" class="btn btn-sm btn-danger" data-action="end-session" data-id="${id}">Zakończ</button>`;
+    } else if (s.closed) {
+      status = '<span class="badge badge-done">✓ Zakończona</span>';
+      buttons = `<button type="button" class="btn btn-sm" data-action="session-stats" data-id="${id}">Wyniki</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-action="resume-session" data-id="${id}">Wznów</button>`;
+    } else {
+      buttons = `<button type="button" class="btn btn-sm" data-action="select-session" data-id="${id}">Wybierz</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-action="end-session" data-id="${id}">Zakończ</button>`;
+    }
+    return `<div class="item ${cur ? 'cur' : ''} ${s.closed ? 'closed' : ''}">
+      <div class="main" data-action="${s.closed ? 'session-stats' : 'select-session'}" data-id="${id}">
+        <div class="row wrap" style="gap:6px">
+          <span class="xs strong acc">${fmtDate(s.dateIso)}</span>
+          <span class="badge">${esc(s.season)}</span>
+          ${status}
+        </div>
+        <h4>${esc(s.title)}</h4>
+        <div class="xs muted mt4">Gry: <b class="tx2">${sum.n}</b> • Suma: <b class="tx2">${sum.total}</b> • Śr: <b class="okc">${sum.avg}</b> • High: <b class="tx2">${sum.high}</b></div>
+      </div>
+      <div class="side">
+        ${buttons}
+        <button type="button" class="link-del" data-action="delete-session" data-id="${id}">Usuń</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* =====================================================================
+   ZAKŁADKA: KULE
+   ===================================================================== */
+function addBall(e) {
+  e.preventDefault();
+  const name = $('ball-name').value.trim();
+  if (!name) return;
+  arsenal.unshift({
+    id: 'ball_' + Date.now(), name, weight: $('ball-weight').value,
+    surface: $('ball-surface').value.trim() || 'Fabryczna', notes: $('ball-notes').value.trim(), color: validColor($('ball-color').value)
+  });
+  saveArsenal();
+  ['ball-name', 'ball-surface', 'ball-notes'].forEach(id => { $(id).value = ''; });
+  renderArsenal();
+  toast(`Dodano kulę: ${name}`);
+}
+function updateBallSurface(id, val) {
+  const b = arsenal.find(x => x.id === id);
+  if (!b) return;
+  b.surface = val.trim() || 'Fabryczna';
+  saveArsenal();
+  gameState.players.forEach(p => { if (p.meta.ballId === id) p.meta.surface = b.surface; });
+  saveCurrent();
+  toast(`Powłoka ${b.name}: ${b.surface}`);
+}
+async function deleteBall(id) {
+  const b = arsenal.find(x => x.id === id);
+  if (!b) return;
+  if (!await askConfirm({ title: `Usunąć ${b.name}?`, message: 'Zapisane gry tą kulą zostaną w historii i statystykach.', ok: 'Usuń', danger: true })) return;
+  arsenal = arsenal.filter(x => x.id !== id);
+  saveArsenal(); renderArsenal();
+  toast('Usunięto kulę z arsenału');
+}
+function renderArsenal() {
+  $('arsenal-count').textContent = `${arsenal.length} szt.`;
+  if (!arsenal.length) { $('arsenal-list').innerHTML = '<div class="empty">Twoja torba jest pusta. Dodaj pierwszą kulę powyżej.</div>'; return; }
+  $('arsenal-list').innerHTML = arsenal.map(b => {
+    const gs = savedGames.filter(g => g.isOwner && g.meta && g.meta.ballId === b.id);
+    const avg = gs.length ? (gs.reduce((a, g) => a + g.score, 0) / gs.length).toFixed(1) : null;
+    const ag = gs.length ? aggregate(gs) : null;
+    return `<div class="card stack" style="gap:10px">
+      <div class="row between" style="align-items:flex-start">
+        <div class="grow">
+          <div class="row wrap" style="gap:7px">
+            <span class="ball-dot" style="background:${validColor(b.color)}"></span>
+            <b style="font-size:14px">${esc(b.name)}</b>
+            <span class="badge">${esc(b.weight)}</span>
+          </div>
+          ${b.notes ? `<div class="xs muted mt4">${esc(b.notes)}</div>` : ''}
+          <div class="xs mt4 ${avg ? 'tx2' : 'dim'}">${avg ? `${gamesWord(gs.length)} • śr. <b class="okc">${avg}</b> • strike ${pct(ag.strikes, ag.strikeOpps)}% • spare ${pct(ag.spares, ag.spareOpps)}%` : 'Brak zapisanych gier tą kulą'}</div>
+        </div>
+        <button type="button" class="link-del" data-action="delete-ball" data-id="${esc(b.id)}">Usuń</button>
+      </div>
+      <div class="row between" style="border-top:1px solid var(--line);padding-top:10px">
+        <span class="xs muted">Powłoka:</span>
+        <input type="text" list="surface-presets" value="${esc(b.surface)}" data-change="ball-surface" data-id="${esc(b.id)}" class="input input-sm" style="width:170px;text-align:right;color:#93c5fd">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* =====================================================================
+   ZAKŁADKA: STATYSTYKI
+   ===================================================================== */
+function setStatsMode(mode) {
+  statsMode = mode;
+  $('sm-day').classList.toggle('on', mode === 'day');
+  $('sm-season').classList.toggle('on', mode === 'season');
+  $('st-day-wrap').hidden = mode !== 'day';
+  $('st-season-wrap').hidden = mode !== 'season';
+  renderStats();
+}
+function populateStatsSelectors() {
+  const ss = $('st-session'), prevS = ss.value || activeSessionId;
+  const sorted = [...sessions].sort((a, b) => b.dateIso.localeCompare(a.dateIso));
+  ss.innerHTML = sorted.map(s => `<option value="${esc(s.id)}">${fmtDate(s.dateIso)} — ${esc(s.title)} (${ownerGamesInSession(s.id)})</option>`).join('');
+  ss.value = sorted.some(s => s.id === prevS) ? prevS : (sorted[0] ? sorted[0].id : '');
+
+  const se = $('st-season'), prevSe = se.value;
+  const seasons = Array.from(new Set([currentSeason(), ...sessions.map(s => s.season), ...savedGames.map(g => g.season).filter(Boolean)]));
+  se.innerHTML = seasons.map(s => `<option value="${esc(s)}">${esc(s)} (${savedGames.filter(g => g.season === s && g.isOwner).length})</option>`).join('')
+    + `<option value="__ALL__">Wszystkie sezony (${savedGames.filter(g => g.isOwner).length})</option>`;
+  se.value = (prevSe && (seasons.includes(prevSe) || prevSe === '__ALL__')) ? prevSe : currentSeason();
+
+  const sp = $('st-player'), prevP = sp.value || '__OWNER__';
+  const others = Array.from(new Set(savedGames.filter(g => !g.isOwner).map(g => g.playerName || 'Gracz')));
+  sp.innerHTML = `<option value="__OWNER__">${esc(settings.playerName)} (Ty)</option>` + others.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  sp.value = prevP === '__OWNER__' || others.includes(prevP) ? prevP : '__OWNER__';
+  $('st-player-wrap').hidden = others.length === 0;
+}
+function getFilteredGames() {
+  const who = $('st-player').value || '__OWNER__';
+  let list = savedGames.filter(g => who === '__OWNER__' ? g.isOwner : (!g.isOwner && (g.playerName || 'Gracz') === who));
+  if (statsMode === 'day') list = list.filter(g => g.sessionId === $('st-session').value);
+  else { const s = $('st-season').value; if (s !== '__ALL__') list = list.filter(g => g.season === s); }
+  return list.sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+}
+function bestSeries(games) {
+  const by = {};
+  games.forEach(g => (by[g.sessionId] = by[g.sessionId] || []).push(g));
+  let best = 0, desc = 'Wymagane min. 3 gry w jednej sesji';
+  Object.values(by).forEach(l => {
+    for (let i = 0; i + 2 < l.length; i++) {
+      const s = l[i].score + l[i + 1].score + l[i + 2].score;
+      if (s > best) { best = s; desc = `${l[i].gameTitle} – ${l[i + 2].gameTitle} • ${fmtDate(l[i].dateIso)} (śr. ${(s / 3).toFixed(1)})`; }
+    }
+  });
+  return { best, desc };
+}
+function groupTable(games, keyFn, label, rowAction) {
+  const by = {};
+  games.forEach(g => { const k = keyFn(g) || '—'; (by[k] = by[k] || []).push(g); });
+  const rows = Object.entries(by).map(([k, gs]) => {
+    const a = aggregate(gs);
+    return { k, n: gs.length, avg: gs.reduce((s, g) => s + g.score, 0) / gs.length, x: pct(a.strikes, a.strikeOpps), sp: pct(a.spares, a.spareOpps) };
+  }).sort((a, b) => b.n - a.n);
+  if (!rows.length) return '<div class="xs dim">Brak danych</div>';
+  const bestAvg = Math.max(...rows.map(r => r.avg));
+  return `<table class="tbl"><thead><tr><th>${label}</th><th class="n">Gry</th><th class="n">Śr.</th><th class="n">X%</th><th class="n">/%</th></tr></thead><tbody>${
+    rows.map(r => `<tr ${rowAction && r.k !== '—' ? `data-action="${rowAction}" data-q="${esc(r.k)}"` : ''}><td>${esc(r.k)}</td><td class="n">${r.n}</td><td class="n ${rows.length > 1 && r.avg === bestAvg ? 'okc' : ''}">${r.avg.toFixed(1)}</td><td class="n">${r.x}</td><td class="n">${r.sp}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+function renderHeat(t) {
+  const max = Math.max(1, ...t.pinLeft.slice(1));
+  $('st-heat').innerHTML = t.firstKnown === 0
+    ? '<div class="xs dim">Brak danych — zaznaczaj zbite kręgle (nie szybki wpis), a zobaczysz, które najczęściej zostają.</div>'
+    : DECK_ROWS.map(row => `<div class="heat-row">${row.map(n => {
+        const c = t.pinLeft[n], r = c / max, pc = Math.round(c / t.firstKnown * 100);
+        return `<div class="hp" style="background:rgba(239,68,68,${(0.06 + r * 0.8).toFixed(2)})"><i>${n}</i><b>${pc}%</b></div>`;
+      }).join('')}</div>`).join('') + `<div class="xs dim center">% pierwszych rzutów (bez strike'ów), po których kręgiel został</div>`;
+  const leaves = Object.entries(t.leaves).sort((a, b) => b[1].n - a[1].n).slice(0, 8);
+  $('st-leaves').innerHTML = leaves.length ? leaves.map(([k, e]) => {
+    const pc = pct(e.c, e.n);
+    return `<div class="leave"><span class="nm">${esc(k)}${e.split ? ' <span class="badge badge-red" style="padding:1px 5px;font-size:9.5px">split</span>' : ''}</span>
+      <div class="bar"><i style="width:${pc}%"></i></div><span class="xs muted" style="text-align:right">${e.c}/${e.n} • <b class="tx2">${pc}%</b></span></div>`;
+  }).join('') : '<div class="xs dim">Brak danych</div>';
+}
+function renderStats() {
+  populateStatsSelectors();
+  const games = getFilteredGames();
+  const n = games.length;
+  if (statsMode === 'day') {
+    const s = sessions.find(x => x.id === $('st-session').value);
+    $('st-history-h').textContent = s ? `Gry: ${fmtDate(s.dateIso)} — ${s.title}` : 'Gry z wybranego dnia';
+  } else {
+    const s = $('st-season').value;
+    $('st-history-h').textContent = s === '__ALL__' ? 'Wszystkie gry' : `Gry w sezonie: ${s.replace(/^Sezon\s*/, '')}`;
+  }
+  $('st-count').textContent = gamesWord(n);
+  const t = aggregate(games);
+  const avg = n ? games.reduce((a, g) => a + g.score, 0) / n : 0;
+  $('st-avg').textContent = avg.toFixed(1);
+  const hi = n ? games.reduce((a, g) => g.score > a.score ? g : a) : null;
+  $('st-high').textContent = hi ? hi.score : 0;
+  $('st-high-desc').textContent = hi ? `${hi.gameTitle} • ${fmtDate(hi.dateIso)}` : '—';
+  const ser = bestSeries(games);
+  $('st-series').textContent = ser.best;
+  $('st-series-desc').textContent = ser.desc;
+  $('st-first').textContent = t.firstBalls ? (t.firstBallPins / t.firstBalls).toFixed(2) : '0.0';
+  $('st-clean').textContent = `${t.frames ? 100 - pct(t.openFrames, t.frames) : 0}%`;
+  $('st-clean-desc').textContent = `czyste gry: ${t.cleanGames} • otwarte: ${t.openFrames}`;
+  const setRate = (id, a, b) => { $(id).textContent = `${pct(a, b)}%`; $(id + '-raw').textContent = `${a} / ${b}`; };
+  setRate('st-strike', t.strikes, t.strikeOpps);
+  setRate('st-spare', t.spares, t.spareOpps);
+  setRate('st-single', t.singleSpares, t.singleOpps);
+  setRate('st-split', t.splitConv, t.splits);
+  drawChart(games);
+  renderHeat(t);
+  $('st-balls').innerHTML = groupTable(games, g => g.meta && g.meta.ballName, 'Kula');
+  $('st-oils').innerHTML = groupTable(games, g => g.meta && g.meta.oilPattern, 'Smarowanie', 'oil-open');
+  renderHistory(games);
+}
+function drawChart(games) {
+  const c = $('chart');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  if (!rect.width) return;
+  c.width = rect.width * dpr; c.height = rect.height * dpr;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const w = rect.width, h = rect.height;
+  const L = 30, R = 12, T = 16, B = 18, pw = w - L - R, ph = h - T - B;
+  ctx.clearRect(0, 0, w, h);
+  ctx.font = '10px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  [0, 100, 200, 300].forEach(v => {
+    const y = T + ph - v / 300 * ph;
+    ctx.strokeStyle = '#222226'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(w - R, y); ctx.stroke();
+    ctx.fillStyle = '#5f5f69'; ctx.fillText(v, L - 6, y + 3);
+  });
+  if (!games.length) {
+    ctx.fillStyle = '#8e8e98'; ctx.textAlign = 'center'; ctx.font = '12px Inter, system-ui, sans-serif';
+    ctx.fillText('Brak zapisanych gier w tym widoku', w / 2, h / 2);
+    return;
+  }
+  const sc = games.map(g => g.score);
+  const avg = sc.reduce((a, b) => a + b, 0) / sc.length;
+  const ay = T + ph - avg / 300 * ph;
+  ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(16,185,129,.6)';
+  ctx.beginPath(); ctx.moveTo(L, ay); ctx.lineTo(w - R, ay); ctx.stroke(); ctx.restore();
+  const step = sc.length > 1 ? pw / (sc.length - 1) : 0;
+  const pts = sc.map((s, i) => ({ x: sc.length > 1 ? L + i * step : L + pw / 2, y: T + ph - s / 300 * ph, s }));
+  if (pts.length > 1) {
+    const gr = ctx.createLinearGradient(0, T, 0, T + ph);
+    gr.addColorStop(0, 'rgba(59,130,246,.32)'); gr.addColorStop(1, 'rgba(59,130,246,0)');
+    ctx.beginPath(); ctx.moveTo(pts[0].x, T + ph);
+    pts.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(pts[pts.length - 1].x, T + ph); ctx.closePath();
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+  }
+  const maxS = Math.max(...sc);
+  pts.forEach((p, i) => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.s === maxS ? 5 : 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = p.s === maxS ? '#10b981' : '#fff'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = p.s === maxS ? '#064e3b' : '#3b82f6'; ctx.stroke();
+    if (pts.length <= 14 || i === pts.length - 1 || p.s === maxS) {
+      ctx.fillStyle = '#e4e4e7'; ctx.font = 'bold 10px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(p.s, p.x, p.y - 9);
+    }
+  });
+}
+function renderHistory(games) {
+  if (!games.length) { $('st-history').innerHTML = '<div class="empty">Brak zapisanych gier dla wybranego filtra.</div>'; return; }
+  $('st-history').innerHTML = [...games].reverse().map(g => {
+    const m = g.meta || {};
+    const sess = sessions.find(s => s.id === g.sessionId);
+    const a = analyzeFrames(g.frames);
+    return `<div class="item">
+      <div class="main" data-action="open-game" data-id="${esc(g.id)}">
+        <div class="row wrap" style="gap:6px">
+          <span class="xs strong acc">${esc(g.gameTitle)}</span>
+          <span class="xs dim">${esc(g.dateDisplay || fmtDate(g.dateIso))}</span>
+          ${g.lane ? `<span class="badge">Tor ${esc(g.lane)}</span>` : ''}
+          ${g.editedAt ? '<span class="xs dim">• edytowana</span>' : ''}
+        </div>
+        ${statsMode === 'season' && sess ? `<div class="xs okc strong mt4">${esc(sess.title)}</div>` : ''}
+        <div class="xs tx2 mt4">Kula: <b>${esc(m.ballName || 'Brak')}</b>${m.surface ? ` <span class="muted">(${esc(m.surface)})</span>` : ''}</div>
+        <div class="xs muted mt4">${esc(m.oilPattern || '—')} • Linia ${m.startBoard ?? '–'}→${m.targetBoard ?? '–'} • X ${a.strikes} • / ${a.spares} • otw. ${a.openFrames}</div>
+      </div>
+      <div class="side">
+        <span class="score-big">${g.score}</span>
+        <button type="button" class="link-del" data-action="delete-game" data-id="${esc(g.id)}">Usuń</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openGameModal(id) {
+  const g = savedGames.find(x => x.id === id);
+  if (!g) return;
+  const sess = sessions.find(s => s.id === g.sessionId);
+  const m = g.meta || {};
+  const a = analyzeFrames(g.frames);
+  $('gm-title').textContent = `${g.gameTitle} — ${g.score} pkt`;
+  renderScoreboard($('gm-board'), g.frames, { activeFrame: -1 });
+  const lh = Array.isArray(m.lineHistory) && m.lineHistory.length > 1 ? ' • ' + m.lineHistory.map(l => `R${l.frame}: ${l.start}→${l.target}`).join(', ') : '';
+  $('gm-meta').innerHTML = `
+    <div><span class="k">Gracz:</span> <b>${esc(displayName(g))}</b></div>
+    <div><span class="k">Dzień:</span> <b>${esc(sess ? sess.title : '—')}</b> (${esc(g.dateDisplay || fmtDate(g.dateIso))})</div>
+    <div><span class="k">Sezon:</span> ${esc(g.season || '—')}${g.lane ? ` • <span class="k">Tor:</span> ${esc(g.lane)}` : ''}</div>
+    <div><span class="k">Kula:</span> <b>${esc(m.ballName || 'Brak')}</b> (${esc(m.surface || 'brak powłoki')})</div>
+    <div><span class="k">Smarowanie:</span> ${esc(m.oilPattern || '—')}</div>
+    <div><span class="k">Linia:</span> start <b>${m.startBoard ?? '–'}</b> → cel <b>${m.targetBoard ?? '–'}</b>${esc(lh)}</div>
+    <div><span class="k">Gra:</span> X ${a.strikes} • / ${a.spares} • otwarte ${a.openFrames} • splity ${a.splits} • 1. rzut śr. ${a.firstBalls ? (a.firstBallPins / a.firstBalls).toFixed(1) : '0'}${a.fouls ? ` • faule ${a.fouls}` : ''}</div>`;
+  $('gm-edit').dataset.id = g.id;
+  $('gm-delete').dataset.id = g.id;
+  openModal('game-modal');
+}
+async function deleteGame(id) {
+  const g = savedGames.find(x => x.id === id);
+  if (!g) return;
+  if (!await askConfirm({ title: `Usunąć „${g.gameTitle}” (${g.score} pkt)?`, message: 'Gra zniknie z historii i statystyk. Tego nie da się cofnąć.', ok: 'Usuń', danger: true })) return;
+  savedGames = savedGames.filter(x => x.id !== id);
+  saveGames();
+  closeModal('game-modal');
+  if (gameState.editingGameId === id) finishEdit();
+  if (currentTab === 'staty') renderStats();
+  toast('Usunięto grę');
+}
+
+/* =====================================================================
+   ZAKŁADKA: WIĘCEJ (ustawienia + kopia zapasowa)
+   ===================================================================== */
+const needsBackup = () => savedGames.length > 0 && (!settings.lastBackup || Date.now() - settings.lastBackup > 14 * 864e5);
+function refreshBackupDot() { $('nav-dot').hidden = !needsBackup(); }
+function renderMore() {
+  setVal('set-name', settings.playerName);
+  $('set-wl').checked = !!settings.wakeLock;
+  $('set-vib').checked = !!settings.vibrate;
+  $('set-anim').checked = !!settings.animations;
+  $('wl-desc').textContent = 'wakeLock' in navigator ? 'Telefon nie zablokuje się w trakcie gry' : 'Twoja przeglądarka tego nie obsługuje';
+  if (!navigator.vibrate) $('set-vib').closest('.set-row').querySelector('.d').textContent = 'Twoja przeglądarka nie obsługuje wibracji';
+  const lb = settings.lastBackup;
+  const days = lb ? Math.floor((Date.now() - lb) / 864e5) : null;
+  $('backup-info').textContent = lb ? `Ostatnia kopia: ${new Date(lb).toLocaleDateString('pl-PL')} (${days === 0 ? 'dzisiaj' : days + ' ' + plural(days, 'dzień', 'dni', 'dni') + ' temu'})` : 'Nie zrobiono jeszcze żadnej kopii.';
+  $('backup-banner').innerHTML = needsBackup() ? `<div class="banner banner-warn">⚠️ ${lb ? 'Od ostatniej kopii minęło ponad 2 tygodnie.' : 'Masz zapisane gry, ale nie masz kopii.'} Pobierz kopię teraz.</div>` : '';
+  let bytes = 0;
+  try { Object.values(K).forEach(k => { bytes += (localStorage.getItem(k) || '').length; }); } catch (e) {}
+  $('data-info').textContent = `${gamesWord(savedGames.length)} • ${sessions.length} ${plural(sessions.length, 'sesja', 'sesje', 'sesji')} • ${arsenal.length} ${plural(arsenal.length, 'kula', 'kule', 'kul')} • ok. ${Math.max(1, Math.round(bytes / 1024))} KB`;
+  refreshBackupDot();
+}
+function buildBackup() {
+  return { app: 'bowling-pro-tracker', version: 3, exportedAt: new Date().toISOString(), settings: { playerName: settings.playerName }, arsenal, sessions, games: savedGames };
+}
+function backupFileName() {
+  const d = new Date();
+  return `bowling-kopia-${todayIso()}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}.json`;
+}
+function markBackup() { settings.lastBackup = Date.now(); saveSettings(); renderMore(); }
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(buildBackup())], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = backupFileName();
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  markBackup();
+  toast('Pobrano kopię — znajdziesz ją w Pobranych');
+}
+async function shareBackup() {
+  try {
+    const file = new File([JSON.stringify(buildBackup())], backupFileName(), { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Kopia Bowling Pro Tracker' });
+      markBackup();
+      toast('Udostępniono kopię');
+      return;
+    }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  exportBackup();
+}
+async function importBackup(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (e) { toast('To nie jest prawidłowy plik kopii'); return; }
+  if (!data || !Array.isArray(data.games) || !Array.isArray(data.sessions)) { toast('Nieprawidłowy plik kopii'); return; }
+  const inGames = data.games.map(normalizeGame).filter(Boolean);
+  const inSess = data.sessions.map(normalizeSession).filter(Boolean);
+  const inBalls = (Array.isArray(data.arsenal) ? data.arsenal : []).map(normalizeBall).filter(Boolean);
+  const mode = await askChoice({
+    title: 'Wczytać kopię?',
+    message: `Plik: ${gamesWord(inGames.length)}, ${inSess.length} ${plural(inSess.length, 'sesja', 'sesje', 'sesji')}, ${inBalls.length} ${plural(inBalls.length, 'kula', 'kule', 'kul')}. „Scal” dopisze brakujące dane do obecnych, „Zastąp” usunie obecne i wczyta tylko te z pliku.`,
+    buttons: [{ label: 'Anuluj', value: null }, { label: 'Zastąp', value: 'replace', cls: 'btn-danger' }, { label: 'Scal', value: 'merge', cls: 'btn-primary' }]
+  });
+  if (!mode) return;
+  if (mode === 'replace') {
+    savedGames = inGames; sessions = inSess; arsenal = inBalls;
+    if (data.settings && data.settings.playerName) settings.playerName = String(data.settings.playerName).slice(0, 24);
+  } else {
+    const merge = (cur, inc) => { const ids = new Set(cur.map(x => x.id)); return cur.concat(inc.filter(x => !ids.has(x.id))); };
+    savedGames = merge(savedGames, inGames); sessions = merge(sessions, inSess); arsenal = merge(arsenal, inBalls);
+  }
+  if (!sessions.some(s => s.id === activeSessionId)) ensureTodaySession();
+  saveGames(); saveSessions(); saveArsenal(); saveSettings();
+  renderMore(); renderAll();
+  toast(mode === 'replace' ? 'Wczytano kopię (zastąpiono dane)' : 'Scalono kopię z obecnymi danymi');
+}
+async function deleteAll() {
+  const ok = await askConfirm({ title: 'Usunąć WSZYSTKIE dane?', message: `Skasujesz ${gamesWord(savedGames.length)}, wszystkie sesje, kule i ustawienia. Zrób wcześniej kopię! Tego nie da się cofnąć.`, ok: 'Usuń wszystko', danger: true });
+  if (!ok) return;
+  [...Object.values(K), ...Object.values(LEGACY).flat()].forEach(k => store.del(k));
+  loadAll(); ensureTodaySession();
+  renderMore();
+  toast('Usunięto wszystkie dane');
+}
+
+/* =====================================================================
+   NAWIGACJA I PODPIĘCIE ZDARZEŃ
+   ===================================================================== */
+function switchTab(t) {
+  const changed = t !== currentTab;
+  currentTab = t;
+  ['tor', 'sesje', 'kule', 'staty', 'wiecej'].forEach(x => {
+    $('tab-' + x).classList.toggle('on', x === t);
+    $('nav-' + x).classList.toggle('on', x === t);
+  });
+  if (changed) window.scrollTo(0, 0);
+  if (t === 'tor') renderAll();
+  if (t === 'sesje') renderSessions();
+  if (t === 'kule') renderArsenal();
+  if (t === 'staty') renderStats();
+  if (t === 'wiecej') renderMore();
+}
+
+const ACTIONS = {
+  'tab': el => switchTab(el.dataset.tab),
+  'new-game': () => newGame(),
+  'undo': () => undo(),
+  'toggle-quick': () => { settings.quickEntry = !settings.quickEntry; gameState.selectedPins = []; saveSettings(); renderAll(); },
+  'strike': () => { gameState.selectedPins = [...activePlayer().standingPins]; commitRoll(); },
+  'next': () => commitRoll(),
+  'foul': () => commitRoll({ foul: true }),
+  'quick': el => commitRoll({ quickCount: +el.dataset.n }),
+  'jump-frame': el => jumpToFrame(+el.dataset.frame),
+  'add-player': () => addPlayer(),
+  'remove-player': el => removePlayer(+el.dataset.idx),
+  'select-player': el => selectPlayer(+el.dataset.idx),
+  'save-game': () => saveCompletedGame(),
+  'cancel-edit': () => cancelEdit(),
+  'toggle-equip': () => { settings.equipCollapsed = !settings.equipCollapsed; saveSettings(); syncEquip(); },
+  'select-session': el => selectSession(el.dataset.id),
+  'delete-session': el => deleteSession(el.dataset.id),
+  'end-session': el => endSession(el.dataset.id),
+  'resume-session': el => resumeSession(el.dataset.id),
+  'session-stats': el => { closeModal('oil-modal'); openSessionStats(el.dataset.id); },
+  'oil-open': el => openOilModal(el.dataset.from === 'tor' ? $('eq-oil').value : (el.dataset.q || '')),
+  'oil-apply': el => applyOilCombo(el.dataset.src, +el.dataset.idx),
+  'oil-pick': el => { $('eq-oil').value = el.dataset.q; onEquipText(); renderOilHint(); },
+  'oil-pick-modal': el => { $('oil-q').value = el.dataset.q; renderOilModal(); $('oil-results').scrollIntoView({ block: 'nearest' }); },
+  'new-day': () => startNewDay(),
+  'delete-ball': el => deleteBall(el.dataset.id),
+  'open-game': el => openGameModal(el.dataset.id),
+  'delete-game': el => deleteGame(el.dataset.id),
+  'edit-game': el => editGame(el.dataset.id),
+  'close-modal': () => closeModal(),
+  'stats-mode': el => setStatsMode(el.dataset.mode),
+  'export': () => exportBackup(),
+  'share': () => shareBackup(),
+  'import': () => $('import-file').click(),
+  'delete-all': () => deleteAll(),
+  'dismiss-migrate': () => { settings.migrateDismissed = true; saveSettings(); renderAll(); }
+};
+
+function wire() {
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const fn = ACTIONS[el.dataset.action];
+    if (fn) { e.stopPropagation(); fn(el, e); }
+  });
+  document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.dataset && el.dataset.change === 'ball-surface') updateBallSurface(el.dataset.id, el.value);
+  });
+  document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); }));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && modalStack.length) closeModal(); });
+
+  $('sess-title').addEventListener('change', e => {
+    const s = getActiveSession();
+    if (!s) return;
+    s.title = e.target.value.trim() || `Trening / Liga (${fmtDate(s.dateIso)})`;
+    saveSessions(); toast(`Nazwa dnia: ${s.title}`);
+  });
+  const onTitle = e => {
+    gameState.gameTitle = e.target.value;
+    ['game-title', 'fin-title'].forEach(id => { if ($(id) !== e.target) $(id).value = e.target.value; });
+    saveCurrent();
+  };
+  $('game-title').addEventListener('input', onTitle);
+  $('fin-title').addEventListener('input', onTitle);
+  $('game-lane').addEventListener('input', e => { gameState.lane = e.target.value.trim(); saveCurrent(); });
+  $('eq-ball').addEventListener('change', onBallChange);
+  $('eq-surface').addEventListener('change', onEquipText);
+  $('eq-oil').addEventListener('change', () => { onEquipText(); renderOilHint(); });
+  let oilT;
+  $('eq-oil').addEventListener('input', () => { clearTimeout(oilT); oilT = setTimeout(renderOilHint, 180); });
+  $('oil-q').addEventListener('input', () => { clearTimeout(oilT); oilT = setTimeout(renderOilModal, 120); });
+  $('eq-start').addEventListener('change', onLineChange);
+  $('eq-target').addEventListener('change', onLineChange);
+  $('form-session').addEventListener('submit', createSession);
+  $('form-ball').addEventListener('submit', addBall);
+  ['st-session', 'st-season', 'st-player'].forEach(id => $(id).addEventListener('change', renderStats));
+
+  $('set-name').addEventListener('change', e => {
+    settings.playerName = e.target.value.trim().slice(0, 24) || 'Ja';
+    e.target.value = settings.playerName;
+    if (!gameState.editingGameId) gameState.players[0].name = settings.playerName;
+    saveSettings(); saveCurrent(); toast(`Zapisano imię: ${settings.playerName}`);
+  });
+  $('set-wl').addEventListener('change', e => { settings.wakeLock = e.target.checked; saveSettings(); updateWakeLock(); });
+  $('set-vib').addEventListener('change', e => { settings.vibrate = e.target.checked; saveSettings(); vibrate(30); });
+  $('set-anim').addEventListener('change', e => { settings.animations = e.target.checked; saveSettings(); if (e.target.checked) celebrate('STRIKE!'); });
+  $('import-file').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (f) importBackup(f);
+  });
+
+  document.addEventListener('visibilitychange', updateWakeLock);
+  document.addEventListener('pointerdown', () => { if (settings.wakeLock && !wakeLock) updateWakeLock(); }, { passive: true });
+  let rt;
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (currentTab === 'staty') drawChart(getFilteredGames()); }, 120); });
+}
+
+function init() {
+  loadAll();
+  ensureTodaySession();
+  buildDeck();
+  setupPinGestures();
+  wire();
+  renderAll();
+  refreshBackupDot();
+  updateWakeLock();
+}
+document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => { $('app-version').textContent = APP_VERSION; });
+
+/* Tryb aplikacji (PWA): praca offline + automatyczne aktualizacje.
+   Działa tylko ze strony internetowej (GitHub Pages), nie z pliku otwartego lokalnie. */
+if (IS_HOSTED && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker:', e));
+    // Prośba, żeby przeglądarka nie czyściła danych aplikacji przy braku miejsca
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

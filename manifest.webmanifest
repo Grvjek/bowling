@@ -1,6 +1,6 @@
 {
   "name": "Bowling Pro Tracker",
-  "short_name": "Bowling",
+  "short_name": "Bowling Pro Tracker",
   "description": "Licznik wyników i statystyki do bowlingu — liga i trening",
   "lang": "pl",
   "start_url": "./",
